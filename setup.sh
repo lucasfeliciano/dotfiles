@@ -11,3 +11,9 @@ else
 fi
 e_success "brew updated done!"
 
+# Install Brew dependencies
+e_header "Installing dependencies from Brewfile"
+brew tap Homebrew/bundle
+brew bundle
+e_success "dependencies installed!"
+

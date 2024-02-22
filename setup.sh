@@ -32,3 +32,8 @@ e_header "Installing bun"
 (cd bun ; source index.sh)
 e_success "bun setup done!"
 
+# Install Catppuccin Theme warp terminal
+e_header "Installing Catppuccin Theme for warp terminal"
+(cd warp-theme ; source index.sh)
+e_success "Theme installed!"
+

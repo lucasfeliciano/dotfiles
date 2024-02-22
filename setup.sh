@@ -17,3 +17,8 @@ brew tap Homebrew/bundle
 brew bundle
 e_success "dependencies installed!"
 
+# Install Oh my zsh
+e_header "Installing Oh my zsh"
+(cd oh-my-zsh ; source index.sh)
+e_success "Oh my zsh installed!"
+

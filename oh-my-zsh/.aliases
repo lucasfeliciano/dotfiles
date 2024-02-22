@@ -1,0 +1,14 @@
+# Functions
+alias pj="cd ~/Projects"
+alias zshconfig="code ~/.zshrc"
+alias ohmyzsh="code ~/.oh-my-zsh"
+
+# Kill process on given port
+function kp() {
+  lsof -P | grep $1 | awk '{print $2}' | xargs kill -9
+}
+
+# Create a new directory and enter it
+function mkd() {
+	mkdir -p "$@" && cd "$_";
+}

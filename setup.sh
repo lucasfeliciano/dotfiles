@@ -42,3 +42,7 @@ e_header "Setting up Git"
 (cd git ; source index.sh)
 e_success "Git setup done!"
 
+
+
+e_thanks "Author: https://github.com/lucasfeliciano"
+e_note "Inpired by https://github.com/phoinixi/dotfiles"

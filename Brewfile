@@ -1,0 +1,2 @@
+# Warp Terminal
+cask "warp"

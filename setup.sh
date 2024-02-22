@@ -27,3 +27,8 @@ e_header "Installing node via fnm"
 (cd node ; source index.sh)
 e_success "node setup done!"
 
+# Install bun
+e_header "Installing bun"
+(cd bun ; source index.sh)
+e_success "bun setup done!"
+

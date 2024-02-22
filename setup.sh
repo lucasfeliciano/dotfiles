@@ -22,3 +22,8 @@ e_header "Installing Oh my zsh"
 (cd oh-my-zsh ; source index.sh)
 e_success "Oh my zsh installed!"
 
+# Install node
+e_header "Installing node via fnm"
+(cd node ; source index.sh)
+e_success "node setup done!"
+

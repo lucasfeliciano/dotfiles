@@ -37,3 +37,8 @@ e_header "Installing Catppuccin Theme for warp terminal"
 (cd warp-theme ; source index.sh)
 e_success "Theme installed!"
 
+# Configure Git
+e_header "Setting up Git"
+(cd git ; source index.sh)
+e_success "Git setup done!"
+

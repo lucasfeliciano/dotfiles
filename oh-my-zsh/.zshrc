@@ -20,15 +20,6 @@ source $HOME/.aliases
 # Add fnm to zsh
 eval "$(fnm env --use-on-cd)"
 
-# Spaceship configuration
-
-# WarpTerminal specific configuration
-if [[ $TERM_PROGRAM == "WarpTerminal" ]]; then
-    SPACESHIP_PROMPT_ASYNC=false
-    SPACESHIP_PROMPT_SEPARATE_LINE=false
-    SPACESHIP_PROMPT_SEPARATE_LINE=""
-fi
-
 # bun completions
 [ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
 

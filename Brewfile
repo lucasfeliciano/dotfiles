@@ -1,2 +1,2 @@
-# Warp Terminal
-cask "warp"
+# iTerm2 Terminal
+cask "iterm2"

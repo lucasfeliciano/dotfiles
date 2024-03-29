@@ -32,10 +32,10 @@ e_header "Installing bun"
 (cd bun ; source index.sh)
 e_success "bun setup done!"
 
-# Install Catppuccin Theme warp terminal
-e_header "Installing Catppuccin Theme for warp terminal"
-(cd warp-theme ; source index.sh)
-e_success "Theme installed!"
+# Install iTerm2
+e_header "Installing iTerm2 profile and color scheme "
+(cd iterm2 ; source index.sh)
+e_success "iterm2 setup done!"
 
 # Configure Git
 e_header "Setting up Git"

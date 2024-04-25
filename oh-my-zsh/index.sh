@@ -17,6 +17,13 @@ else
   git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
 fi
 
+# Install zsh-history-substring-search
+if [ -d "$ZSH_CUSTOM/plugins/zsh-history-substring-search" ]; then
+  e_warning "zsh-history-substring-search is already installed. skipping.."
+else
+  git clone git clone https://github.com/zsh-users/zsh-history-substring-search ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-history-substring-search
+fi
+
 # Install spaceship theme
 if [ -d "$ZSH_CUSTOM/themes/spaceship-prompt" ]; then
   e_warning "Spaceship theme is already installed. skipping.."

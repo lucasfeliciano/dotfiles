@@ -2,6 +2,7 @@
 alias pj="cd ~/Projects"
 alias zshconfig="code ~/.zshrc"
 alias ohmyzsh="code ~/.oh-my-zsh"
+alias pn="pnpm"
 
 # Kill process on given port
 function kp() {

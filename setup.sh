@@ -22,15 +22,10 @@ e_header "Installing Oh my zsh"
 (cd oh-my-zsh ; source index.sh)
 e_success "Oh my zsh installed!"
 
-# Install node
-e_header "Installing node via fnm"
-(cd node ; source index.sh)
-e_success "node setup done!"
-
-# Install bun
-e_header "Installing bun"
-(cd bun ; source index.sh)
-e_success "bun setup done!"
+# Install pnpm & node lts
+e_header "Installing pnpm & node lts"
+(cd pnpm ; source index.sh)
+e_success "pnpm and node setup done!"
 
 # Install iTerm2
 e_header "Installing iTerm2 profile and color scheme "

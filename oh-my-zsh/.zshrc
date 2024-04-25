@@ -17,12 +17,13 @@ source $ZSH/oh-my-zsh.sh
 # Set aliases
 source $HOME/.aliases
 
-# Add fnm to zsh
-eval "$(fnm env --use-on-cd)"
+# pnpm
+export PNPM_HOME="$HOME/.pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME:"*) ;;
+  *) export PATH="$PNPM_HOME:$PATH" ;;
+esac
+# pnpm end
 
-# bun completions
-[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
-
-# bun
-export BUN_INSTALL="$HOME/.bun"
-export PATH="$BUN_INSTALL/bin:$PATH"
+# pnpm completions
+source $PNPM_HOME/completion-for-pnpm.zsh

@@ -18,12 +18,15 @@ $ sh setup.sh
 ## What comes with setup?
 
 1. [Homebrew & Cask](https://brew.sh/)
-2. [Warp Terminal](https://www.warp.dev/)
-3. [Oh My Zsh!](https://ohmyz.sh/)
-4. [Fast Node Manager](https://github.com/Schniz/fnm/) (with Node LTS as default)
-5. [Bun](https://bun.sh/)
-6. [Catppuccin Theme for Warp Terminal](https://github.com/catppuccin/warp)
-7. Setup Git
+2. [iterm2](https://iterm2.com/)
+   1. default user profile (needs to be manually loaded)
+   2. [catppuccin theme](https://github.com/catppuccin/iterm) (needs to be manually loaded)
+4. [Oh My Zsh!](https://ohmyz.sh/)
+   1. [spaceship-prompt](https://github.com/spaceship-prompt/spaceship-prompt)
+   2. [zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting) plugin
+   3. [zsh-history-substring-search](https://github.com/zsh-users/zsh-history-substring-search) plugin
+5. [pnpm](https://pnpm.io/) (with Node LTS as default)
+6. Setup Git
    1. Prompt global user name
    2. Prompt global email
    3. Set pull strategy to rebase as default

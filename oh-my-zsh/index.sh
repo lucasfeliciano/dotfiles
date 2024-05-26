@@ -24,14 +24,14 @@ else
   git clone git clone https://github.com/zsh-users/zsh-history-substring-search ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-history-substring-search
 fi
 
-# Install spaceship theme
-if [ -d "$ZSH_CUSTOM/themes/spaceship-prompt" ]; then
-  e_warning "Spaceship theme is already installed. skipping.."
+# Install powerlevel10k theme
+if [ -d "$ZSH_CUSTOM/themes/powerlevel10k" ]; then
+  e_warning "powerlevel10k theme is already installed. skipping.."
 else
-  git clone https://github.com/spaceship-prompt/spaceship-prompt.git "$ZSH_CUSTOM/themes/spaceship-prompt" --depth=1
-  ln -sf "$ZSH_CUSTOM/themes/spaceship-prompt/spaceship.zsh-theme" "$ZSH_CUSTOM/themes/spaceship.zsh-theme"
+  git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
 fi
 
 # To install ZSH themes & aliases
 ln -sf $(pwd)/.aliases ~/.aliases
 ln -sf $(pwd)/.zshrc ~/.zshrc
+ln -sf $(pwd)/.p10k.zsh ~/.p10k.zsh

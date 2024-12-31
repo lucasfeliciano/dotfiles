@@ -1,0 +1,7 @@
+# Appereance
+font-family = MonoLisa
+macos-titlebar-proxy-icon = hidden
+theme = catppuccin-latte
+
+# Behaviour
+confirm-close-surface = false

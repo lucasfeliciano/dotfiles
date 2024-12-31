@@ -1,2 +1,2 @@
-# iTerm2 Terminal
-cask "iterm2"
+# Ghostty Terminal
+cask "ghostty"

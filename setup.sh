@@ -27,10 +27,10 @@ e_header "Installing pnpm & node lts"
 (cd pnpm ; source index.sh)
 e_success "pnpm and node setup done!"
 
-# Install iTerm2
-e_header "Installing iTerm2 profile and color scheme "
-(cd iterm2 ; source index.sh)
-e_success "iterm2 setup done!"
+# Configure Ghostty terminal
+e_header "Setting up Ghostty terminal"
+(cd ghostty ; source index.sh)
+e_success "Ghostty setup done!"
 
 # Configure Git
 e_header "Setting up Git"

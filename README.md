@@ -17,20 +17,26 @@ $ sh setup.sh
 
 ### Configuration files
 
-The configuration files like `.zshrc` and iterm profiles are going to be added to your home directory as a symbolic link.
-This is to keep track of your environemnt changes so you can easily commit them.
+Configuration files are added to the right places with symbolic links. This is to keep track of your environemnt changes so you can easily commit them.
+
+#### Symbolic links
+
+| File                | Symbolic Link Location   | Description                                                                                   |
+| ------------------- | ------------------------ | --------------------------------------------------------------------------------------------- |
+| oh-my-zsh/.zshrc    | ~/.zshrc                 | Main Zsh configuration file, controlling shell behavior and plugins.                          |
+| oh-my-zsh/.p10k.zsh | ~/.p10k.zsh              | Configuration file for the Powerlevel10k Zsh theme.                                           |
+| oh-my-zsh/.aliases  | ~/.aliases               | File containing custom terminal command shortcuts (aliases).                                  |
+| ghostty/config      | ~/.config/ghostty/config | Ghostty terminal configuration file. Manages settings for keybindings, themes, and behaviour. |
 
 ## What comes with setup?
 
-1. [Homebrew & Cask](https://brew.sh/)
-2. [iterm2](https://iterm2.com/)
-   1. default user profile (needs to be manually loaded)
-   2. [catppuccin theme](https://github.com/catppuccin/iterm) (needs to be manually loaded)
-3. [Oh My Zsh!](https://ohmyz.sh/)
+1. [Homebrew & Cask](https://brew.sh)
+2. [Ghostty](https://ghostty.org)
+3. [Oh My Zsh!](https://ohmyz.sh)
    1. [spaceship-prompt](https://github.com/spaceship-prompt/spaceship-prompt)
    2. [zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting) plugin
    3. [zsh-history-substring-search](https://github.com/zsh-users/zsh-history-substring-search) plugin
-4. [pnpm](https://pnpm.io/) (with Node LTS as default)
+4. [pnpm](https://pnpm.io) (with Node LTS as default)
 5. Setup Git
    1. Prompt global user name
    2. Prompt global email

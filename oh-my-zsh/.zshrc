@@ -37,3 +37,8 @@ source $PNPM_HOME/completion-for-pnpm.zsh
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+
+# Load private configuration
+if [ -f ~/.zshrc_private ]; then
+    source ~/.zshrc_private
+fi

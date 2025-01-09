@@ -21,7 +21,7 @@ fi
 if [ -d "$ZSH_CUSTOM/plugins/zsh-history-substring-search" ]; then
   e_warning "zsh-history-substring-search is already installed. skipping.."
 else
-  git clone git clone https://github.com/zsh-users/zsh-history-substring-search ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-history-substring-search
+  git clone https://github.com/zsh-users/zsh-history-substring-search ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-history-substring-search
 fi
 
 # Install powerlevel10k theme
@@ -35,3 +35,4 @@ fi
 ln -sf $(pwd)/.aliases ~/.aliases
 ln -sf $(pwd)/.zshrc ~/.zshrc
 ln -sf $(pwd)/.p10k.zsh ~/.p10k.zsh
+ln -sf $(pwd)/.zshrc_private ~/.zshrc_private

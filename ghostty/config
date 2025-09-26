@@ -1,7 +1,8 @@
 # Appereance
 font-family = MonoLisa
 macos-titlebar-proxy-icon = hidden
-theme = catppuccin-latte
+theme = catpuccin-latte.conf
 
 # Behaviour
 confirm-close-surface = false
+mouse-scroll-multiplier=5

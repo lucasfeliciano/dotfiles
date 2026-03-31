@@ -23,10 +23,16 @@ Making it easy to setup a new machine with node, pnpm and Oh My Zsh!
 > **This project was created to be used in a machine with zero configuration.**\
 > **No backups are made. Use at your own risk.**
 
-After cloning the repository run the following command in the root of the project.
+On a fresh machine, run the following command. It will install Homebrew, Git, clone this repo, and run the full setup:
 
 ```sh
-$ sh setup.sh
+curl -fsSL https://raw.githubusercontent.com/lucasfeliciano/dotfiles/main/bootstrap.sh | sh
+```
+
+If you've already cloned the repo, run the setup directly:
+
+```sh
+sh setup.sh
 ```
 
 ### Configuration files

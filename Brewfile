@@ -10,3 +10,6 @@ cask "rectangle-pro"
 
 # Git GUI
 cask "gitup-app"
+
+# Screenshots
+cask "shottr"

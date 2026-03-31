@@ -1,17 +1,20 @@
 # dotfiles
 
-Making it easy to setup a new machine with node, pnpm and Oh My Zsh!
+Making it easy to set up a new machine with a consistent shell, tools, and terminal.
 
 ## What comes with setup?
 
 1. [Homebrew & Cask](https://brew.sh)
-2. [Oh My Zsh!](https://ohmyz.sh)
+2. [Oh My Zsh](https://ohmyz.sh)
    1. [Powerlevel10k](https://github.com/romkatv/powerlevel10k) zsh theme
    2. [zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting) plugin
    3. [zsh-history-substring-search](https://github.com/zsh-users/zsh-history-substring-search) plugin
-3. [mise](https://mise.jdx.dev) (with Node LTS and pnpm as defaults)
-4. [Ghostty](https://ghostty.org)
-5. Git configuration
+   4. [zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions) plugin
+   5. [zsh-eza](https://github.com/z-shell/zsh-eza) plugin
+3. [eza](https://github.com/eza-community/eza) (with Catppuccin Latte color theme)
+4. [mise](https://mise.jdx.dev) (with Node LTS and pnpm as defaults)
+5. [Ghostty](https://ghostty.org) (with built-in Catppuccin Latte theme)
+6. Git configuration
    1. Prompt global user name
    2. Prompt global email
    3. Set pull strategy to rebase as default
@@ -52,16 +55,16 @@ Configuration files are added to the right places with symbolic links. This keep
 
 #### Symbolic links
 
-| File                           | Symbolic Link Location         | Description                                                  |
-| ------------------------------ | ------------------------------ | ------------------------------------------------------------ |
-| config/zsh/.zshrc              | ~/.zshrc                       | Main Zsh configuration file                                  |
-| config/zsh/.p10k.zsh           | ~/.p10k.zsh                    | Powerlevel10k theme configuration                            |
-| config/zsh/.aliases            | ~/.aliases                     | Custom terminal command shortcuts                            |
-| config/zsh/.zshrc_private      | ~/.zshrc_private               | Private shell config (gitignored)                            |
-| config/ghostty/config          | ~/.config/ghostty/config       | Ghostty terminal configuration                               |
-| config/ghostty/themes          | ~/.config/ghostty/themes       | Ghostty themes directory                                     |
-| config/eza/theme.yml           | ~/.config/eza/theme.yml        | eza color theme (Catppuccin Latte)                           |
-| config/mise/config.toml        | ~/.config/mise/config.toml     | mise runtime manager configuration                           |
+| File                      | Symbolic Link Location         | Description                       |
+| ------------------------- | ------------------------------ | --------------------------------- |
+| config/zsh/.zshrc         | ~/.zshrc                       | Main Zsh configuration file       |
+| config/zsh/.p10k.zsh      | ~/.p10k.zsh                    | Powerlevel10k theme configuration |
+| config/zsh/.aliases       | ~/.aliases                     | Custom terminal command shortcuts |
+| config/ghostty/config     | ~/.config/ghostty/config       | Ghostty terminal configuration    |
+| config/eza/theme.yml      | ~/.config/eza/theme.yml        | eza color theme (Catppuccin Latte)|
+| config/mise/config.toml   | ~/.config/mise/config.toml     | mise runtime manager configuration|
+
+> `~/.zshrc_private` is copied from `config/zsh/.zshrc_private.template` on first run and kept local (not symlinked, not tracked).
 
 ### Repository structure
 
@@ -81,9 +84,11 @@ dotfiles/
 │   └── mise.sh           # setup_mise()
 └── config/
     ├── eza/               # eza color theme (Catppuccin Latte)
-    ├── ghostty/           # Ghostty terminal config + themes
+    ├── ghostty/           # Ghostty terminal config
     ├── mise/              # mise runtime manager config
     └── zsh/               # Zsh dotfiles (.zshrc, .aliases, etc.)
 ```
 
-#### Inspired by https://github.com/phoinixi/dotfiles
+---
+
+Inspired by [phoinixi/dotfiles](https://github.com/phoinixi/dotfiles)

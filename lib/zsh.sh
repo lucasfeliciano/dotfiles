@@ -23,6 +23,18 @@ setup_zsh() {
     run git clone https://github.com/zsh-users/zsh-history-substring-search "$ZSH_CUSTOM/plugins/zsh-history-substring-search"
   fi
 
+  if [ -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ]; then
+    e_warning "zsh-autosuggestions is already installed. skipping.."
+  else
+    run git clone https://github.com/zsh-users/zsh-autosuggestions.git "$ZSH_CUSTOM/plugins/zsh-autosuggestions"
+  fi
+
+  if [ -d "$ZSH_CUSTOM/plugins/zsh-eza" ]; then
+    e_warning "zsh-eza is already installed. skipping.."
+  else
+    run git clone https://github.com/z-shell/zsh-eza.git "$ZSH_CUSTOM/plugins/zsh-eza"
+  fi
+
   if [ -d "$ZSH_CUSTOM/themes/powerlevel10k" ]; then
     e_warning "powerlevel10k theme is already installed. skipping.."
   else

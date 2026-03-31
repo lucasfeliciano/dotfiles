@@ -1,7 +1,16 @@
 # Oh My Zsh, plugins, theme, and shell config symlinks.
 # Sourced by setup.sh — do not execute directly.
 
+ZSH_REQUIRED_BINS=(eza)
+
 setup_zsh() {
+  for bin in "${ZSH_REQUIRED_BINS[@]}"; do
+    if ! command -v "$bin" &>/dev/null; then
+      error "$bin is not installed. Run './setup.sh brew' first."
+      return 1
+    fi
+  done
+
   local ZSH="$HOME/.oh-my-zsh"
   local ZSH_CUSTOM="$ZSH/custom"
 
@@ -45,9 +54,9 @@ setup_zsh() {
   run ln -sf "$DOTFILES_DIR/config/zsh/.zshrc" ~/.zshrc
   run ln -sf "$DOTFILES_DIR/config/zsh/.p10k.zsh" ~/.p10k.zsh
 
-  if [[ ! -f ~/.zshrc_private ]]; then
-    run cp "$DOTFILES_DIR/config/zsh/.zshrc_private.template" ~/.zshrc_private
-  else
+  if [[ -f ~/.zshrc_private || -L ~/.zshrc_private ]]; then
     e_warning "~/.zshrc_private already exists. skipping.."
+  else
+    run cp "$DOTFILES_DIR/config/zsh/.zshrc_private.template" ~/.zshrc_private
   fi
 }

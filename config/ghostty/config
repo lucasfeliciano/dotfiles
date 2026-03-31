@@ -1,7 +1,7 @@
 # Appereance
 font-family = MonoLisa
 macos-titlebar-proxy-icon = hidden
-theme = catpuccin-latte.conf
+theme = Catppuccin Latte
 
 # Behaviour
 confirm-close-surface = false

@@ -10,7 +10,7 @@ Making it easy to setup a new machine with node, pnpm and Oh My Zsh!
    1. [Powerlevel10k](https://github.com/romkatv/powerlevel10k) zsh theme
    2. [zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting) plugin
    3. [zsh-history-substring-search](https://github.com/zsh-users/zsh-history-substring-search) plugin
-4. [pnpm](https://pnpm.io) (with Node LTS as default)
+4. [mise](https://mise.jdx.dev) (with Node LTS and pnpm as defaults)
 5. Setup Git
    1. Prompt global user name
    2. Prompt global email

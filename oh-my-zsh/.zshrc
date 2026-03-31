@@ -24,16 +24,8 @@ source $ZSH/oh-my-zsh.sh
 # Set aliases
 source $HOME/.aliases
 
-# pnpm
-export PNPM_HOME="$HOME/.pnpm"
-case ":$PATH:" in
-  *":$PNPM_HOME:"*) ;;
-  *) export PATH="$PNPM_HOME:$PATH" ;;
-esac
-# pnpm end
-
-# pnpm completions
-source $PNPM_HOME/completion-for-pnpm.zsh
+# mise
+eval "$(mise activate zsh)"
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh

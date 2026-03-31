@@ -22,10 +22,10 @@ e_header "Installing Oh my zsh"
 (cd oh-my-zsh ; source index.sh)
 e_success "Oh my zsh installed!"
 
-# Install pnpm & node lts
-e_header "Installing pnpm & node lts"
-(cd pnpm ; source index.sh)
-e_success "pnpm and node setup done!"
+# Install mise, node & pnpm
+e_header "Installing mise, node & pnpm"
+(cd mise ; source index.sh)
+e_success "mise, node and pnpm setup done!"
 
 # Configure Ghostty terminal
 e_header "Setting up Ghostty terminal"

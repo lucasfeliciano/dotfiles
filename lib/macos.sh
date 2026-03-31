@@ -12,6 +12,10 @@ setup_macos() {
   # Remove open-app indicator dots
   run defaults write com.apple.dock show-process-indicators -bool false
 
+  # ── Desktop ───────────────────────────────────────────────────────────────
+  # Disable widgets on desktop
+  run defaults write com.apple.WindowManager StandardHideWidgets -bool true
+
   # ── Menu Bar ──────────────────────────────────────────────────────────────
   # Show volume in menu bar (18 = always show in menu bar)
   run defaults -currentHost write com.apple.controlcenter Sound -int 18

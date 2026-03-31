@@ -1,0 +1,102 @@
+colourful: true
+
+filekinds:
+  normal: { foreground: "#4c4f69" }       # Text
+  directory: { foreground: "#1e66f5" }    # Blue
+  symlink: { foreground: "#04a5e5" }      # Sky
+  pipe: { foreground: "#8c8fa1" }         # Overlay 1
+  block_device: { foreground: "#e64553" } # Maroon
+  char_device: { foreground: "#e64553" }  # Maroon
+  socket: { foreground: "#9ca0b0" }       # Overlay 0
+  special: { foreground: "#8839ef" }      # Mauve
+  executable: { foreground: "#40a02b" }   # Green
+  mount_point: { foreground: "#209fb5" }  # Sapphire
+
+perms:
+  user_read: { foreground: "#4c4f69" }    # Text
+  user_write: { foreground: "#df8e1d" }   # Yellow
+  user_execute_file: { foreground: "#40a02b" }  # Green
+  user_execute_other: { foreground: "#40a02b" } # Green
+  group_read: { foreground: "#5c5f77" }   # Subtext 1
+  group_write: { foreground: "#df8e1d" }  # Yellow
+  group_execute: { foreground: "#40a02b" } # Green
+  other_read: { foreground: "#6c6f85" }   # Subtext 0
+  other_write: { foreground: "#df8e1d" }  # Yellow
+  other_execute: { foreground: "#40a02b" } # Green
+  special_user_file: { foreground: "#8839ef" } # Mauve
+  special_other: { foreground: "#9ca0b0" }     # Overlay 0
+  attribute: { foreground: "#6c6f85" }    # Subtext 0
+
+size:
+  major: { foreground: "#6c6f85" }        # Subtext 0
+  minor: { foreground: "#04a5e5" }        # Sky
+  number_byte: { foreground: "#4c4f69" }  # Text
+  number_kilo: { foreground: "#40a02b" }  # Green
+  number_mega: { foreground: "#df8e1d" }  # Yellow
+  number_giga: { foreground: "#fe640b" }  # Peach
+  number_huge: { foreground: "#d20f39" }  # Red
+  unit_byte: { foreground: "#6c6f85" }    # Subtext 0
+  unit_kilo: { foreground: "#40a02b" }    # Green
+  unit_mega: { foreground: "#df8e1d" }    # Yellow
+  unit_giga: { foreground: "#fe640b" }    # Peach
+  unit_huge: { foreground: "#d20f39" }    # Red
+
+users:
+  user_you: { foreground: "#7287fd" }     # Lavender
+  user_root: { foreground: "#d20f39" }    # Red
+  user_other: { foreground: "#8839ef" }   # Mauve
+  group_yours: { foreground: "#5c5f77" }  # Subtext 1
+  group_other: { foreground: "#8c8fa1" }  # Overlay 1
+  group_root: { foreground: "#d20f39" }   # Red
+
+links:
+  normal: { foreground: "#04a5e5" }       # Sky
+  multi_link_file: { foreground: "#209fb5" } # Sapphire
+
+git:
+  new: { foreground: "#40a02b" }          # Green
+  modified: { foreground: "#df8e1d" }     # Yellow
+  deleted: { foreground: "#d20f39" }      # Red
+  renamed: { foreground: "#179299" }      # Teal
+  typechange: { foreground: "#ea76cb" }   # Pink
+  ignored: { foreground: "#8c8fa1" }      # Overlay 1
+  conflicted: { foreground: "#e64553" }   # Maroon
+
+git_repo:
+  branch_main: { foreground: "#4c4f69" }  # Text
+  branch_other: { foreground: "#8839ef" } # Mauve
+  git_clean: { foreground: "#40a02b" }    # Green
+  git_dirty: { foreground: "#d20f39" }    # Red
+
+security_context:
+  colon: { foreground: "#8c8fa1" }        # Overlay 1
+  user: { foreground: "#5c5f77" }         # Subtext 1
+  role: { foreground: "#8839ef" }         # Mauve
+  typ: { foreground: "#9ca0b0" }          # Overlay 0
+  range: { foreground: "#8839ef" }        # Mauve
+
+file_type:
+  image: { foreground: "#df8e1d" }        # Yellow
+  video: { foreground: "#d20f39" }        # Red
+  music: { foreground: "#40a02b" }        # Green
+  lossless: { foreground: "#179299" }     # Teal
+  crypto: { foreground: "#9ca0b0" }       # Overlay 0
+  document: { foreground: "#1e66f5" }     # Blue
+  compressed: { foreground: "#ea76cb" }   # Pink
+  temp: { foreground: "#e64553" }         # Maroon
+  compiled: { foreground: "#209fb5" }     # Sapphire
+  build: { foreground: "#6c6f85" }        # Subtext 0
+  source: { foreground: "#7287fd" }       # Lavender
+
+punctuation: { foreground: "#8c8fa1" }    # Overlay 1
+date: { foreground: "#df8e1d" }           # Yellow
+inode: { foreground: "#6c6f85" }          # Subtext 0
+blocks: { foreground: "#7c7f93" }         # Overlay 2
+header: { foreground: "#4c4f69" }         # Text
+octal: { foreground: "#179299" }          # Teal
+flags: { foreground: "#8839ef" }          # Mauve
+
+symlink_path: { foreground: "#04a5e5" }   # Sky
+control_char: { foreground: "#209fb5" }   # Sapphire
+broken_symlink: { foreground: "#d20f39" } # Red
+broken_path_overlay: { foreground: "#9ca0b0" } # Overlay 0

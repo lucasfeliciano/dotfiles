@@ -21,11 +21,12 @@ done
 source "$DOTFILES_DIR/util/log.sh"
 source "$DOTFILES_DIR/lib/brew.sh"
 source "$DOTFILES_DIR/lib/zsh.sh"
+source "$DOTFILES_DIR/lib/eza.sh"
 source "$DOTFILES_DIR/lib/git.sh"
 source "$DOTFILES_DIR/lib/ghostty.sh"
 source "$DOTFILES_DIR/lib/mise.sh"
 
-ALL_MODULES=(brew zsh mise ghostty git)
+ALL_MODULES=(brew zsh eza mise ghostty git)
 
 run_module() {
   local module="$1"

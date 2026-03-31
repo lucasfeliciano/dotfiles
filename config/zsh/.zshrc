@@ -21,6 +21,12 @@ plugins=(git zsh-eza zsh-autosuggestions zsh-syntax-highlighting zsh-history-sub
 # Initialize oh-my-zsh
 source $ZSH/oh-my-zsh.sh
 
+# eza config
+export EZA_CONFIG_DIR="$HOME/.config/eza"
+export _EZA_PARAMS=('--git' '--group-directories-first' '--color-scale-mode=fixed' '--icons' '--time-style=long-iso')
+# Clear LS_COLORS so eza theme.yml has full control over colors
+unset LS_COLORS
+
 # Set aliases
 source $HOME/.aliases
 

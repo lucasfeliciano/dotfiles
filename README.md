@@ -44,7 +44,7 @@ Run only specific modules by passing their names:
 ./setup.sh zsh             # Run only zsh setup
 ```
 
-Available modules: `brew`, `zsh`, `mise`, `ghostty`, `git`
+Available modules: `brew`, `zsh`, `eza`, `mise`, `ghostty`, `git`
 
 ### Configuration files
 
@@ -60,6 +60,7 @@ Configuration files are added to the right places with symbolic links. This keep
 | config/zsh/.zshrc_private      | ~/.zshrc_private               | Private shell config (gitignored)                            |
 | config/ghostty/config          | ~/.config/ghostty/config       | Ghostty terminal configuration                               |
 | config/ghostty/themes          | ~/.config/ghostty/themes       | Ghostty themes directory                                     |
+| config/eza/theme.yml           | ~/.config/eza/theme.yml        | eza color theme (Catppuccin Latte)                           |
 | config/mise/config.toml        | ~/.config/mise/config.toml     | mise runtime manager configuration                           |
 
 ### Repository structure
@@ -74,10 +75,12 @@ dotfiles/
 ├── lib/
 │   ├── brew.sh           # setup_brew()
 │   ├── zsh.sh            # setup_zsh()
+│   ├── eza.sh            # setup_eza()
 │   ├── git.sh            # setup_git()
 │   ├── ghostty.sh        # setup_ghostty()
 │   └── mise.sh           # setup_mise()
 └── config/
+    ├── eza/               # eza color theme (Catppuccin Latte)
     ├── ghostty/           # Ghostty terminal config + themes
     ├── mise/              # mise runtime manager config
     └── zsh/               # Zsh dotfiles (.zshrc, .aliases, etc.)

@@ -4,3 +4,6 @@
 
 # Ghostty Terminal
 cask "ghostty"
+
+# Window Management
+cask "rectangle-pro"

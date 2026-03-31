@@ -7,3 +7,6 @@ cask "ghostty"
 
 # Window Management
 cask "rectangle-pro"
+
+# Git GUI
+cask "gitup-app"

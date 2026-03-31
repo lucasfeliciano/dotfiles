@@ -2,16 +2,16 @@
 # Sourced by setup.sh — do not execute directly.
 
 # Fonts
-bold=$(tput bold)
-underline=$(tput sgr 0 1)
-reset=$(tput sgr0)
+bold=$'\033[1m'
+underline=$'\033[4m'
+reset=$'\033[0m'
 
-# Colors
-purple=$(tput setaf 171)
-red=$(tput setaf 1)
-green=$(tput setaf 76)
-tan=$(tput setaf 3)
-blue=$(tput setaf 38)
+# Colors — Catppuccin Latte
+purple=$'\033[38;2;136;57;239m'   # Mauve
+red=$'\033[38;2;210;15;57m'       # Red
+green=$'\033[38;2;64;160;43m'     # Green
+tan=$'\033[38;2;254;100;11m'      # Peach
+blue=$'\033[38;2;4;165;229m'      # Sky
 
 e_ask() {
   printf "\n${bold}%s${reset}" "$@"

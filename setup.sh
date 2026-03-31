@@ -25,8 +25,9 @@ source "$DOTFILES_DIR/lib/eza.sh"
 source "$DOTFILES_DIR/lib/git.sh"
 source "$DOTFILES_DIR/lib/ghostty.sh"
 source "$DOTFILES_DIR/lib/mise.sh"
+source "$DOTFILES_DIR/lib/macos.sh"
 
-ALL_MODULES=(brew zsh eza mise ghostty git)
+ALL_MODULES=(brew zsh eza mise ghostty git macos)
 
 run_module() {
   local module="$1"

@@ -8,4 +8,6 @@ setup_mise() {
 
   run mise use --global node@lts
   run mise use --global pnpm@latest
+
+  run mkdir -p "$HOME/Library/pnpm"
 }

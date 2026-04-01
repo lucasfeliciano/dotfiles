@@ -33,6 +33,13 @@ source $HOME/.aliases
 # mise
 eval "$(mise activate zsh)"
 
+# pnpm global bin dir (managed by mise, PNPM_HOME is for globally installed packages)
+export PNPM_HOME="$HOME/Library/pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME:"*) ;;
+  *) export PATH="$PNPM_HOME:$PATH" ;;
+esac
+
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 

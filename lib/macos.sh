@@ -20,6 +20,11 @@ setup_macos() {
   # Show volume in menu bar (18 = always show in menu bar)
   run defaults -currentHost write com.apple.controlcenter Sound -int 18
 
+  # ── Keyboard ──────────────────────────────────────────────────────────────
+  # Set US International - PC as the only input source
+  run defaults write com.apple.HIToolbox AppleSelectedInputSources -array \
+    '<dict><key>InputSourceKind</key><string>Keyboard Layout</string><key>KeyboardLayout ID</key><integer>15000</integer><key>KeyboardLayout Name</key><string>USInternational-PC</string></dict>'
+
   run killall Dock
   run killall SystemUIServer 2>/dev/null || true
 }

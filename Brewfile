@@ -13,3 +13,6 @@ cask "gitup-app"
 
 # Screenshots
 cask "shottr"
+
+# Network Monitor
+cask "little-snitch"

@@ -16,3 +16,6 @@ cask "shottr"
 
 # Network Monitor
 cask "little-snitch"
+
+# API Client
+cask "bruno"

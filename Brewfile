@@ -1,6 +1,6 @@
-"git"
-"mise"
-"eza"
+brew "git"
+brew "mise"
+brew "eza"
 
 # Ghostty Terminal
 cask "ghostty"

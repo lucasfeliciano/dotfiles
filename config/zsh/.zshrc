@@ -47,3 +47,4 @@ esac
 if [ -f ~/.zshrc_private ]; then
     source ~/.zshrc_private
 fi
+export PATH="$HOME/.local/bin:$PATH"

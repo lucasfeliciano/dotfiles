@@ -6,8 +6,6 @@ setup_mise() {
   run ln -sf "$DOTFILES_DIR/config/mise/config.toml" ~/.config/mise/config.toml
   run mise trust "$DOTFILES_DIR/config/mise/config.toml"
 
-  run mise use --global node@lts
-  run mise use --global pnpm@latest
-
-  run mkdir -p "$HOME/Library/pnpm"
+  run mkdir -p "$HOME/Library/pnpm/bin"
+  run mise install --yes
 }

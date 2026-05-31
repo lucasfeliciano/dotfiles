@@ -33,11 +33,11 @@ source $HOME/.aliases
 # mise
 eval "$(mise activate zsh)"
 
-# pnpm global bin dir (managed by mise, PNPM_HOME is for globally installed packages)
+# We need to set the PNPM_HOME to the correct path for the global binaries to be found.
 export PNPM_HOME="$HOME/Library/pnpm"
 case ":$PATH:" in
-  *":$PNPM_HOME:"*) ;;
-  *) export PATH="$PNPM_HOME:$PATH" ;;
+  *":$PNPM_HOME/bin:"*) ;;
+  *) export PATH="$PNPM_HOME/bin:$PATH" ;;
 esac
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.

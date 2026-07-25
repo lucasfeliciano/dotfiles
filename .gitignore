@@ -1,2 +1,4 @@
 Brewfile.lock.json
 config/zsh/.zshrc_private
+docs/superpowers
+.superpowers/

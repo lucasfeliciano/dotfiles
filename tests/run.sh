@@ -777,6 +777,26 @@ test_bootstrap_forwards_argv() {
   pass "bootstrap forwards setup selectors unchanged"
 }
 
+test_bootstrap_dry_run_forwards_argv_with_checkout() {
+  local checkout="$TEST_ROOT/bootstrap-dry-run-checkout" fake_bin="$TEST_ROOT/bootstrap-dry-run-checkout-bin"
+  local argv_file="$TEST_ROOT/bootstrap-dry-run-argv" execution_file="$TEST_ROOT/bootstrap-dry-run-executions"
+  mkdir -p "$checkout/.git" "$fake_bin"
+  printf '#!/bin/sh\nexit 0\n' > "$fake_bin/xcode-select"
+  chmod +x "$fake_bin/xcode-select"
+  printf '#!/bin/bash\nprintf "%%s\\n" "$@" > "$BOOTSTRAP_ARGV_FILE"\nprintf "executed\\n" >> "$BOOTSTRAP_EXECUTION_FILE"\n' > "$checkout/setup.sh"
+  chmod +x "$checkout/setup.sh"
+
+  DOTFILES_KERNEL_OVERRIDE=Darwin DOTFILES_DIR="$checkout" BOOTSTRAP_ARGV_FILE="$argv_file" \
+    BOOTSTRAP_EXECUTION_FILE="$execution_file" PATH="$fake_bin:$PATH" "$REPO_DIR/bootstrap.sh" \
+    --dry-run --profile virtualization networking >/dev/null
+
+  [[ -e "$argv_file" ]] || fail "bootstrap dry-run did not execute setup in an existing checkout"
+  assert_equals $'--dry-run\n--profile\nvirtualization\nnetworking' "$(sed -n '1,4p' "$argv_file")" \
+    "bootstrap dry-run argv forwarding"
+  assert_equals "1" "$(wc -l < "$execution_file" | tr -d ' ')" "bootstrap dry-run setup executions"
+  pass "bootstrap dry-run forwards selectors through an existing checkout"
+}
+
 test_runtime_and_network_policy() {
   grep -q '^python = "latest"$' "$REPO_DIR/shared/config/mise/config.toml" ||
     fail "mise global Python"
@@ -1020,6 +1040,7 @@ test_private_file_preserved
 test_dry_run_has_no_side_effects
 test_bootstrap_dry_run
 test_bootstrap_forwards_argv
+test_bootstrap_dry_run_forwards_argv_with_checkout
 test_runtime_and_network_policy
 test_package_scope
 test_manifest_parsing

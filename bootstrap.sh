@@ -85,7 +85,7 @@ bootstrap_main() {
     bootstrap_run git clone "$DOTFILES_REPO" "$DOTFILES_DIR"
   fi
 
-  if [[ "$DRY_RUN" == "true" ]]; then
+  if [[ "$DRY_RUN" == "true" && ! -d "$DOTFILES_DIR/.git" ]]; then
     printf '\033[1;34m[dry-run]\033[0m %s/setup.sh' "$DOTFILES_DIR"
     if (($# > 0)); then
       printf ' %q' "$@"

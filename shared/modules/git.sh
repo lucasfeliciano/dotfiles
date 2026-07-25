@@ -28,35 +28,44 @@ check_git() {
 }
 
 setup_git() {
-  local name email pull_rebase
+  local name email use_config_only configure_identity pull_rebase
 
   name="$(git config --global --get user.name 2>/dev/null || true)"
-  if [[ -z "$name" ]]; then
-    if [[ "$DRY_RUN" == "true" ]]; then
-      e_dry "prompt for missing git user.name"
-    else
-      e_ask "Type the name you would like to display in your git commits: "
-      read -r name || true
-      if [[ -n "$name" ]]; then
-        run git config --global user.name "$name"
-      else
-        e_warning "name not supplied, skipping"
-      fi
-    fi
-  fi
-
   email="$(git config --global --get user.email 2>/dev/null || true)"
-  if [[ -z "$email" ]]; then
+  use_config_only="$(git config --global --get user.useConfigOnly 2>/dev/null || true)"
+
+  if [[ -z "$name" || -z "$email" ]] && [[ "$use_config_only" != "true" ]]; then
     if [[ "$DRY_RUN" == "true" ]]; then
-      e_dry "prompt for missing git user.email"
+      e_dry "prompt to configure a global Git commit identity"
     else
-      e_ask "Type your git email: "
-      read -r email || true
-      if [[ -n "$email" ]]; then
-        run git config --global user.email "$email"
-      else
-        e_warning "email not supplied, skipping"
-      fi
+      e_ask "Configure a global Git commit identity? [Y/n] "
+      read -r configure_identity || true
+      case "$configure_identity" in
+        [nN] | [nN][oO])
+          run git config --global user.useConfigOnly true
+          ;;
+        *)
+          if [[ -z "$name" ]]; then
+            e_ask "Type the name you would like to display in your git commits: "
+            read -r name || true
+            if [[ -n "$name" ]]; then
+              run git config --global user.name "$name"
+            else
+              e_warning "name not supplied, skipping"
+            fi
+          fi
+
+          if [[ -z "$email" ]]; then
+            e_ask "Type your git email: "
+            read -r email || true
+            if [[ -n "$email" ]]; then
+              run git config --global user.email "$email"
+            else
+              e_warning "email not supplied, skipping"
+            fi
+          fi
+          ;;
+      esac
     fi
   fi
 

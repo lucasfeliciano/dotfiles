@@ -1438,13 +1438,16 @@ test_remote_installers_fail_on_download_errors() {
   pass "remote installers stop immediately when curl fails"
 }
 
-test_git_prompts_only_for_missing_identity() {
-  local home_dir="$TEST_ROOT/git-home" output
-  mkdir -p "$home_dir"
-  HOME="$home_dir" git config --global user.name "Configured Name"
+test_git_offers_optional_identity_choice() {
+  local configured_home="$TEST_ROOT/git-configured-home"
+  local dry_home="$TEST_ROOT/git-dry-home"
+  local output
+  mkdir -p "$configured_home" "$dry_home"
+  HOME="$configured_home" git config --global user.name "Configured Name"
+  HOME="$configured_home" git config --global user.email "configured@example.com"
 
   output="$(
-    HOME="$home_dir" REPO_DIR="$REPO_DIR" bash -c '
+    HOME="$configured_home" REPO_DIR="$REPO_DIR" bash -c '
       source "$REPO_DIR/shared/lib/log.sh"
       source "$REPO_DIR/shared/lib/command.sh"
       source "$REPO_DIR/shared/modules/git.sh"
@@ -1452,9 +1455,77 @@ test_git_prompts_only_for_missing_identity() {
       setup_git
     '
   )"
-  [[ "$output" != *"missing git user.name"* ]] || fail "configured Git name prompt"
-  [[ "$output" == *"missing git user.email"* ]] || fail "missing Git email prompt"
-  pass "Git setup prompts only for missing identity values"
+  [[ "$output" != *"Configure a global Git commit identity?"* ]] ||
+    fail "complete Git identity choice prompt"
+
+  output="$(
+    HOME="$dry_home" REPO_DIR="$REPO_DIR" bash -c '
+      source "$REPO_DIR/shared/lib/log.sh"
+      source "$REPO_DIR/shared/lib/command.sh"
+      source "$REPO_DIR/shared/modules/git.sh"
+      DRY_RUN=true
+      setup_git
+    '
+  )"
+  [[ "$output" == *"prompt to configure a global Git commit identity"* ]] ||
+    fail "missing Git identity dry-run choice"
+  [[ ! -e "$dry_home/.gitconfig" ]] || fail "Git identity dry-run mutation"
+  pass "Git setup offers one optional identity choice without dry-run mutation"
+}
+
+test_git_persists_opt_out_and_prompts_only_for_missing_values() {
+  local opt_out_home="$TEST_ROOT/git-opt-out-home"
+  local partial_home="$TEST_ROOT/git-partial-home"
+  local output
+  mkdir -p "$opt_out_home" "$partial_home"
+
+  output="$(
+    printf 'n\n' |
+      HOME="$opt_out_home" REPO_DIR="$REPO_DIR" bash -c '
+        source "$REPO_DIR/shared/lib/log.sh"
+        source "$REPO_DIR/shared/lib/command.sh"
+        source "$REPO_DIR/shared/modules/git.sh"
+        DRY_RUN=false
+        setup_git
+      '
+  )"
+  assert_equals "true" "$(HOME="$opt_out_home" git config --global --get user.useConfigOnly)" \
+    "Git identity opt-out persistence"
+  assert_equals "true" "$(HOME="$opt_out_home" git config --global --get pull.rebase)" \
+    "Git pull.rebase after identity opt-out"
+
+  output="$(
+    HOME="$opt_out_home" REPO_DIR="$REPO_DIR" bash -c '
+      source "$REPO_DIR/shared/lib/log.sh"
+      source "$REPO_DIR/shared/lib/command.sh"
+      source "$REPO_DIR/shared/modules/git.sh"
+      DRY_RUN=false
+      setup_git </dev/null
+    '
+  )"
+  [[ "$output" != *"Configure a global Git commit identity?"* ]] ||
+    fail "persisted Git identity opt-out prompted again"
+
+  HOME="$partial_home" git config --global user.name "Configured Name"
+  output="$(
+    printf '\nconfigured@example.com\n' |
+      HOME="$partial_home" REPO_DIR="$REPO_DIR" bash -c '
+        source "$REPO_DIR/shared/lib/log.sh"
+        source "$REPO_DIR/shared/lib/command.sh"
+        source "$REPO_DIR/shared/modules/git.sh"
+        DRY_RUN=false
+        setup_git
+      '
+  )"
+  [[ "$output" == *"Configure a global Git commit identity?"* ]] ||
+    fail "partial Git identity choice prompt"
+  [[ "$output" != *"Type the name"* ]] || fail "configured Git name prompted again"
+  [[ "$output" == *"Type your git email"* ]] || fail "missing Git email prompt"
+  assert_equals "Configured Name" "$(HOME="$partial_home" git config --global --get user.name)" \
+    "preserved Git name"
+  assert_equals "configured@example.com" \
+    "$(HOME="$partial_home" git config --global --get user.email)" "configured Git email"
+  pass "Git setup persists opt-out and prompts only for missing identity values"
 }
 
 test_forbidden_scope_term_boundaries
@@ -1492,6 +1563,7 @@ test_runtime_and_network_policy
 test_package_scope
 test_manifest_parsing
 test_failure_propagation
-test_git_prompts_only_for_missing_identity
+test_git_offers_optional_identity_choice
+test_git_persists_opt_out_and_prompts_only_for_missing_values
 
 printf '1..%d\n' "$pass_count"

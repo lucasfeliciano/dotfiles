@@ -16,8 +16,8 @@ setup_packages() {
 
   if ! command -v brew &>/dev/null; then
     e_header "Installing Homebrew"
-    run /bin/bash -c \
-      'curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | /bin/bash'
+    run /bin/bash -o pipefail -c \
+      'curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | /bin/bash' || return
 
     if [[ -x /opt/homebrew/bin/brew ]]; then
       brew_bin="/opt/homebrew/bin/brew"

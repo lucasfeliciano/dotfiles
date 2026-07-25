@@ -100,6 +100,73 @@ test_shipped_bash_discovery_ignores_design_artifacts() {
   pass "shipped Bash discovery prunes ignored design artifacts"
 }
 
+# Child-script fixtures are single-quoted so their variables expand in the child.
+# shellcheck disable=SC2016
+test_lint_contract() {
+  local fake_bin="$TEST_ROOT/lint-bin" missing_bin="$TEST_ROOT/lint-missing-bin"
+  local lint_log="$TEST_ROOT/lint-invocations" expected actual output status
+  local -a expected_scripts=(
+    "$REPO_DIR/bootstrap.sh"
+    "$REPO_DIR/platforms/macos/adapter.sh"
+    "$REPO_DIR/platforms/macos/modules/packages.sh"
+    "$REPO_DIR/platforms/macos/modules/system.sh"
+    "$REPO_DIR/platforms/macos/profiles/base.sh"
+    "$REPO_DIR/platforms/macos/registry.sh"
+    "$REPO_DIR/platforms/ubuntu/adapter.sh"
+    "$REPO_DIR/platforms/ubuntu/lib/libvirt.sh"
+    "$REPO_DIR/platforms/ubuntu/lib/packages.sh"
+    "$REPO_DIR/platforms/ubuntu/modules/networking.sh"
+    "$REPO_DIR/platforms/ubuntu/modules/packages.sh"
+    "$REPO_DIR/platforms/ubuntu/modules/virtualization.sh"
+    "$REPO_DIR/platforms/ubuntu/profiles/base.sh"
+    "$REPO_DIR/platforms/ubuntu/profiles/networking.sh"
+    "$REPO_DIR/platforms/ubuntu/profiles/virtualization.sh"
+    "$REPO_DIR/platforms/ubuntu/registry.sh"
+    "$REPO_DIR/setup.sh"
+    "$REPO_DIR/shared/lib/command.sh"
+    "$REPO_DIR/shared/lib/fs.sh"
+    "$REPO_DIR/shared/lib/log.sh"
+    "$REPO_DIR/shared/lib/platform.sh"
+    "$REPO_DIR/shared/lib/verify.sh"
+    "$REPO_DIR/shared/modules/eza.sh"
+    "$REPO_DIR/shared/modules/ghostty.sh"
+    "$REPO_DIR/shared/modules/git.sh"
+    "$REPO_DIR/shared/modules/mise.sh"
+    "$REPO_DIR/shared/modules/zsh.sh"
+    "$REPO_DIR/tests/lint.sh"
+    "$REPO_DIR/tests/run.sh"
+  )
+
+  mkdir -p "$fake_bin" "$missing_bin"
+  printf '%s\n' \
+    '#!/bin/sh' \
+    '[ "$#" -eq 4 ] && [ "$1" = "-x" ] && [ "$2" = "-s" ] && [ "$3" = "bash" ] || exit 90' \
+    'printf "%s\\n" "$4" >> "$LINT_LOG"' > "$fake_bin/shellcheck"
+  chmod +x "$fake_bin/shellcheck"
+
+  LINT_LOG="$lint_log" PATH="$fake_bin:$PATH" "$REPO_DIR/tests/lint.sh"
+  expected="$(printf '%s\n' "${expected_scripts[@]}" | sort)"
+  actual="$(sort "$lint_log")"
+  assert_equals "$expected" "$actual" "lint discovers each shipped Bash script exactly once"
+
+  printf '%s\n' \
+    '#!/bin/sh' \
+    'case "$1" in' \
+    '  */*) printf "%s\\n" "${1%/*}" ;;' \
+    '  *) printf ".\\n" ;;' \
+    'esac' > "$missing_bin/dirname"
+  chmod +x "$missing_bin/dirname"
+  set +e
+  output="$(PATH="$missing_bin" "$REPO_DIR/tests/lint.sh" 2>&1)"
+  status=$?
+  set -e
+  assert_equals "127" "$status" "lint missing-ShellCheck status"
+  [[ "$output" == *"shellcheck is required"* ]] || fail "lint missing-ShellCheck guidance"
+  pass "lint covers exactly shipped Bash and preserves its missing-tool contract"
+}
+
+# These patterns intentionally match literal source-code variable references.
+# shellcheck disable=SC2016
 test_final_repository_structure_and_scope() {
   local expected_root_files actual_root_files expected_root_directories actual_root_directories
   local path source_path platform resolved_path
@@ -365,6 +432,8 @@ repository_snapshot() {
   find "$REPO_DIR" -path "$REPO_DIR/.git" -prune -o -type f -exec cksum {} \; | sort
 }
 
+# The fake mise script expands its variables only when the fixture runs.
+# shellcheck disable=SC2016
 prepare_mise_tool_fixture() {
   local fixture_root="$1" executable
   mkdir -p \
@@ -451,6 +520,8 @@ test_mise_tool_accepts_active_direct_install_and_shim() {
   pass "mise ownership accepts active direct installs and shims"
 }
 
+# Fake command scripts expand marker variables only when the fixtures run.
+# shellcheck disable=SC2016
 test_check_mode_selection_and_safety() {
   local home_dir fake_bin sudo_marker package_marker system_marker after created_path output repo_before repo_after
   home_dir="$TEST_ROOT/check-home"
@@ -589,9 +660,12 @@ test_libvirt_policy_inspection() {
       case "$1 $2" in
         "net-info vm-isolated") printf "Active: yes\nAutostart: yes\n" ;;
         "net-dumpxml vm-isolated") printf "%s\n" \
-          "<network><ip address=\"192.168.77.1\" netmask=\"255.255.255.0\"/></network>" ;;
+          "<network><ip address=\"192.168.77.1\" netmask=\"255.255.255.0\"><dhcp><range start=\"192.168.77.100\" end=\"192.168.77.254\"/></dhcp></ip></network>" ;;
         *) return 1 ;;
       esac
+    }
+    fake_shipped_isolated() {
+      cat "$REPO_DIR/platforms/ubuntu/config/libvirt/vm-isolated.xml"
     }
     fake_forwarded() {
       printf "%s\n" \
@@ -607,7 +681,43 @@ test_libvirt_policy_inspection() {
     }
     fake_metadata_isolated() {
       printf "%s\n" \
-        "<network><ip address=\"192.168.88.1\" netmask=\"255.255.255.0\"/><metadata><ip xmlns=\"urn:example\" address=\"192.168.77.1\" netmask=\"255.255.255.0\"/></metadata></network>"
+        "<network><metadata><ip xmlns=\"urn:example\" address=\"192.168.77.1\" netmask=\"255.255.255.0\"><dhcp><range start=\"192.168.77.100\" end=\"192.168.77.254\"/></dhcp></ip></metadata></network>"
+    }
+    fake_missing_dhcp() {
+      printf "%s\n" \
+        "<network><ip address=\"192.168.77.1\" netmask=\"255.255.255.0\"/></network>"
+    }
+    fake_wrong_range() {
+      printf "%s\n" \
+        "<network><ip address=\"192.168.77.1\" netmask=\"255.255.255.0\"><dhcp><range start=\"192.168.77.2\" end=\"192.168.77.99\"/></dhcp></ip></network>"
+    }
+    fake_extra_subnet() {
+      printf "%s\n" \
+        "<network><ip address=\"192.168.77.1\" netmask=\"255.255.255.0\"><dhcp><range start=\"192.168.77.100\" end=\"192.168.77.254\"/></dhcp></ip><ip address=\"192.168.88.1\" netmask=\"255.255.255.0\"/></network>"
+    }
+    fake_nested_range() {
+      printf "%s\n" \
+        "<network><ip address=\"192.168.77.1\" netmask=\"255.255.255.0\"><metadata><dhcp><range start=\"192.168.77.100\" end=\"192.168.77.254\"/></dhcp></metadata></ip></network>"
+    }
+    fake_extra_range() {
+      printf "%s\n" \
+        "<network><ip address=\"192.168.77.1\" netmask=\"255.255.255.0\"><dhcp><range start=\"192.168.77.100\" end=\"192.168.77.254\"/><range start=\"192.168.77.2\" end=\"192.168.77.99\"/></dhcp></ip></network>"
+    }
+    fake_attribute_impersonation() {
+      printf "%s\n" \
+        "<network><ip note=\" address='\''192.168.77.1'\''\" data=\" netmask='\''255.255.255.0'\''\"><dhcp><range start=\"192.168.77.100\" end=\"192.168.77.254\"/></dhcp></ip></network>"
+    }
+    fake_duplicate_attribute() {
+      printf "%s\n" \
+        "<network><ip address=\"192.168.77.1\" address=\"192.168.88.1\" netmask=\"255.255.255.0\"><dhcp><range start=\"192.168.77.100\" end=\"192.168.77.254\"/></dhcp></ip></network>"
+    }
+    fake_malformed() {
+      printf "%s\n" \
+        "<network><ip address=\"192.168.77.1\" netmask=\"255.255.255.0\"><dhcp><range start=\"192.168.77.100\" end=\"192.168.77.254\"/></ip></dhcp></network>"
+    }
+    fake_malformed_closing_tag() {
+      printf "%s\n" \
+        "<network><ip address=\"192.168.77.1\" netmask=\"255.255.255.0\"><dhcp><range start=\"192.168.77.100\" end=\"192.168.77.254\"/></dhcp ignored></ip></network>"
     }
     fake_nat() {
       printf "%s\n" "<network><forward mode=\"nat\"/></network>"
@@ -621,14 +731,35 @@ test_libvirt_policy_inspection() {
         "<network><forward mode=\"route\"/><metadata><forward xmlns=\"urn:example\" mode=\"nat\"/></metadata></network>"
     }
 
+    assert_isolated_rejected() {
+      if libvirt_network_matches_isolated_policy vm-isolated "$1"; then
+        printf "accepted invalid isolated-network fixture: %s\n" "$1" >&2
+        return 1
+      fi
+    }
+
     libvirt_network_matches_isolated_policy vm-isolated fake_isolated
-    ! libvirt_network_matches_isolated_policy vm-isolated fake_forwarded
-    ! libvirt_network_matches_isolated_policy vm-isolated fake_wrong_subnet
-    ! libvirt_network_matches_isolated_policy vm-isolated fake_split_subnet
-    ! libvirt_network_matches_isolated_policy vm-isolated fake_metadata_isolated
+    libvirt_network_matches_isolated_policy vm-isolated fake_shipped_isolated
+    assert_isolated_rejected fake_forwarded
+    assert_isolated_rejected fake_wrong_subnet
+    assert_isolated_rejected fake_split_subnet
+    assert_isolated_rejected fake_metadata_isolated
+    assert_isolated_rejected fake_missing_dhcp
+    assert_isolated_rejected fake_wrong_range
+    assert_isolated_rejected fake_extra_subnet
+    assert_isolated_rejected fake_nested_range
+    assert_isolated_rejected fake_extra_range
+    assert_isolated_rejected fake_attribute_impersonation
+    assert_isolated_rejected fake_duplicate_attribute
+    assert_isolated_rejected fake_malformed
+    assert_isolated_rejected fake_malformed_closing_tag
     libvirt_network_is_nat default fake_nat
-    ! libvirt_network_is_nat default fake_disjoint_nat
-    ! libvirt_network_is_nat default fake_metadata_nat
+    if libvirt_network_is_nat default fake_disjoint_nat; then
+      exit 1
+    fi
+    if libvirt_network_is_nat default fake_metadata_nat; then
+      exit 1
+    fi
   ' || fail "libvirt isolated-network policy inspection"
 
   grep -q '<name>vm-isolated</name>' "$REPO_DIR/platforms/ubuntu/config/libvirt/vm-isolated.xml" || fail "neutral network name"
@@ -905,6 +1036,8 @@ test_bootstrap_dry_run() {
   pass "bootstrap dry-run is side-effect-free before cloning"
 }
 
+# The fake setup script expands argv and its output path when bootstrap runs it.
+# shellcheck disable=SC2016
 test_bootstrap_forwards_argv() {
   local checkout="$TEST_ROOT/bootstrap-checkout" fake_bin="$TEST_ROOT/bootstrap-bin"
   local argv_file="$TEST_ROOT/bootstrap-argv"
@@ -923,6 +1056,8 @@ test_bootstrap_forwards_argv() {
   pass "bootstrap forwards setup selectors unchanged"
 }
 
+# The fake setup script expands argv and marker paths when bootstrap runs it.
+# shellcheck disable=SC2016
 test_bootstrap_dry_run_forwards_argv_with_checkout() {
   local checkout="$TEST_ROOT/bootstrap-dry-run-checkout" fake_bin="$TEST_ROOT/bootstrap-dry-run-checkout-bin"
   local argv_file="$TEST_ROOT/bootstrap-dry-run-argv" execution_file="$TEST_ROOT/bootstrap-dry-run-executions"
@@ -1143,6 +1278,115 @@ test_failure_propagation() {
   pass "preflight and setup failures stop their plans immediately"
 }
 
+# Fake downloader/client scripts expand markers only in their child processes.
+# shellcheck disable=SC2016
+test_remote_installers_fail_on_download_errors() {
+  local fake_bin="$TEST_ROOT/remote-installer-bin"
+  local ubuntu_curl_marker="$TEST_ROOT/ubuntu-installer-curl"
+  local ubuntu_continuation="$TEST_ROOT/ubuntu-installer-continued"
+  local zsh_curl_marker="$TEST_ROOT/zsh-installer-curl"
+  local zsh_continuation="$TEST_ROOT/zsh-installer-continued"
+  local brew_curl_marker="$TEST_ROOT/brew-installer-curl"
+  local brew_continuation="$TEST_ROOT/brew-installer-continued"
+  local status
+
+  mkdir -p "$fake_bin" "$TEST_ROOT/remote-ubuntu-home" \
+    "$TEST_ROOT/remote-zsh-home" "$TEST_ROOT/remote-brew-home"
+  printf '%s\n' \
+    '#!/bin/sh' \
+    ': > "$CURL_MARKER"' \
+    'exit 23' > "$fake_bin/curl"
+  printf '%s\n' '#!/bin/sh' 'exit 0' > "$fake_bin/zsh"
+  printf '%s\n' \
+    '#!/bin/sh' \
+    ': > "$CONTINUATION_MARKER"' \
+    'exit 0' > "$fake_bin/git"
+  chmod +x "$fake_bin/curl" "$fake_bin/zsh" "$fake_bin/git"
+
+  set +e
+  PATH="$fake_bin:$PATH" REPO_DIR="$REPO_DIR" HOME="$TEST_ROOT/remote-ubuntu-home" \
+    CURL_MARKER="$ubuntu_curl_marker" CONTINUATION_MARKER="$ubuntu_continuation" bash -c '
+      source "$REPO_DIR/shared/lib/log.sh"
+      source "$REPO_DIR/shared/lib/command.sh"
+      source "$REPO_DIR/platforms/ubuntu/modules/packages.sh"
+      DRY_RUN=false
+      DOTFILES_DIR="$REPO_DIR"
+      apt_install_manifest() { :; }
+      snap_install_manifest() { :; }
+      command() {
+        if [[ "$1" == "-v" && "$2" == "mise" ]]; then
+          return 1
+        fi
+        builtin command "$@"
+      }
+      setup_packages
+      status=$?
+      [[ "$status" -ne 0 ]] || : > "$CONTINUATION_MARKER"
+      exit "$status"
+    ' >/dev/null 2>&1
+  status=$?
+  set -e
+  assert_equals "23" "$status" "Ubuntu mise installer preserves curl failure"
+  [[ -e "$ubuntu_curl_marker" ]] || fail "Ubuntu mise download failure was not exercised"
+  [[ ! -e "$ubuntu_continuation" ]] || fail "Ubuntu package setup continued after mise download failure"
+
+  set +e
+  PATH="$fake_bin:$PATH" REPO_DIR="$REPO_DIR" HOME="$TEST_ROOT/remote-zsh-home" \
+    CURL_MARKER="$zsh_curl_marker" CONTINUATION_MARKER="$zsh_continuation" bash -c '
+      source "$REPO_DIR/shared/lib/log.sh"
+      source "$REPO_DIR/shared/lib/command.sh"
+      source "$REPO_DIR/shared/modules/zsh.sh"
+      DRY_RUN=false
+      DOTFILES_DIR="$REPO_DIR"
+      PLATFORM_ZSH_FRAGMENT="$REPO_DIR/platforms/ubuntu/config/zsh/platform.zsh"
+      SHELL=""
+      link_config() { :; }
+      ensure_local_copy() { :; }
+      platform_change_login_shell() { :; }
+      setup_zsh
+      status=$?
+      [[ "$status" -ne 0 ]] || : > "$CONTINUATION_MARKER"
+      exit "$status"
+    ' >/dev/null 2>&1
+  status=$?
+  set -e
+  assert_equals "23" "$status" "Zsh installer preserves curl failure"
+  [[ -e "$zsh_curl_marker" ]] || fail "Zsh download failure was not exercised"
+  [[ ! -e "$zsh_continuation" ]] || fail "Zsh setup continued after installer download failure"
+
+  set +e
+  PATH="$fake_bin:$PATH" REPO_DIR="$REPO_DIR" HOME="$TEST_ROOT/remote-brew-home" \
+    CURL_MARKER="$brew_curl_marker" CONTINUATION_MARKER="$brew_continuation" bash -c '
+      source "$REPO_DIR/shared/lib/log.sh"
+      source "$REPO_DIR/platforms/macos/modules/packages.sh"
+      DRY_RUN=false
+      DOTFILES_DIR="$REPO_DIR"
+      command() {
+        if [[ "$1" == "-v" && "$2" == "brew" ]]; then
+          return 1
+        fi
+        builtin command "$@"
+      }
+      run() {
+        if [[ "$1" == "/bin/bash" ]]; then
+          "$@"
+        else
+          : > "$CONTINUATION_MARKER"
+        fi
+      }
+      setup_packages
+      status=$?
+      [[ "$status" -ne 0 ]] || : > "$CONTINUATION_MARKER"
+      exit "$status"
+    ' >/dev/null 2>&1
+  status=$?
+  set -e
+  assert_equals "23" "$status" "Homebrew installer preserves curl failure"
+  [[ -e "$brew_curl_marker" ]] || fail "Homebrew download failure was not exercised"
+  [[ ! -e "$brew_continuation" ]] || fail "macOS package setup continued after Homebrew download failure"
+  pass "remote installers stop immediately when curl fails"
+}
+
 test_git_prompts_only_for_missing_identity() {
   local home_dir="$TEST_ROOT/git-home" output
   mkdir -p "$home_dir"
@@ -1165,6 +1409,7 @@ test_git_prompts_only_for_missing_identity() {
 test_forbidden_scope_term_boundaries
 test_shipped_root_directories_ignore_optional_design_roots
 test_shipped_bash_discovery_ignores_design_artifacts
+test_lint_contract
 test_final_repository_structure_and_scope
 test_bash_syntax
 test_platform_detection
@@ -1179,6 +1424,7 @@ test_production_helper_ownership
 test_module_ordering
 test_networking_profile
 test_composed_optional_profiles
+test_remote_installers_fail_on_download_errors
 test_libvirt_policy_inspection
 test_virtualization_stops_after_failed_default_start
 test_apt_refreshes_once_across_manifests

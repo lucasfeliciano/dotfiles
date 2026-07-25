@@ -33,8 +33,8 @@ setup_zsh() {
   if [ -d "$ZSH" ]; then
     e_warning "Oh My Zsh is already installed. skipping.."
   else
-    run env RUNZSH=no CHSH=no sh -c \
-      'curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sh'
+    run env RUNZSH=no CHSH=no /bin/bash -o pipefail -c \
+      'curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | /bin/sh' || return
   fi
 
   if [ -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ]; then

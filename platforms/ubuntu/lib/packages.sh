@@ -58,12 +58,12 @@ read_snap_manifest() {
     read -r package confinement extra <<EOF
 $line
 EOF
-    [[ "$package" =~ ^[a-z0-9][a-z0-9+.-]*$ ]] &&
-      [[ -z "$extra" ]] &&
-      { [[ -z "$confinement" ]] || [[ "$confinement" == "--classic" ]]; } || {
-        error "Invalid Snap manifest entry in ${manifest}: ${line}"
-        return 1
-      }
+    if [[ ! "$package" =~ ^[a-z0-9][a-z0-9+.-]*$ ]] ||
+      [[ -n "$extra" ]] ||
+      { [[ -n "$confinement" ]] && [[ "$confinement" != "--classic" ]]; }; then
+      error "Invalid Snap manifest entry in ${manifest}: ${line}"
+      return 1
+    fi
     SNAP_PACKAGES+=("$package")
     SNAP_CONFINEMENTS+=("$confinement")
   done < "$manifest"

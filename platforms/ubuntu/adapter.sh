@@ -1,5 +1,9 @@
+# Sourced adapter outputs consumed by shared modules.
+# shellcheck disable=SC2034
 PLATFORM_PNPM_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/pnpm"
+# shellcheck disable=SC2034
 PLATFORM_GHOSTTY_OVERLAY="$DOTFILES_DIR/platforms/ubuntu/config/ghostty.conf"
+# shellcheck disable=SC2034
 PLATFORM_ZSH_FRAGMENT="$DOTFILES_DIR/platforms/ubuntu/config/zsh/platform.zsh"
 
 platform_change_login_shell() {

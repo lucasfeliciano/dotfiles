@@ -100,4 +100,4 @@ For a generic read-only view of system libvirt networks, run:
 virsh -c qemu:///system net-list --all
 ```
 
-A logout or reboot is required before group and login-shell checks can pass.
+A logout or reboot is required before new sessions observe login-shell and group changes. Check mode verifies active `libvirt`/`kvm` group membership; it does not inspect the configured login shell.

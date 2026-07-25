@@ -133,6 +133,8 @@ append_profile_modules() {
 
   PROFILE_NAME=""
   PROFILE_MODULES=()
+  # Registered profile paths are validated against the platform registry.
+  # shellcheck source=/dev/null
   source "${REGISTRY_PROFILE_FILES[$index]}"
   [[ "$PROFILE_NAME" == "$requested" ]] || {
     error "Profile file ${REGISTRY_PROFILE_FILES[$index]} registered '${PROFILE_NAME}', expected '${requested}'."
@@ -204,6 +206,8 @@ source_resolved_modules() {
   local module_name index
   for module_name in "${RESOLVED_MODULES[@]}"; do
     index="$(module_index "$module_name")"
+    # Registered module paths are validated before resolved modules are sourced.
+    # shellcheck source=/dev/null
     source "${REGISTRY_MODULE_FILES[$index]}"
   done
 }
@@ -323,7 +327,11 @@ main() {
   source "$DOTFILES_DIR/shared/lib/verify.sh"
 
   detect_platform
+  # Platform detection restricts this path to a shipped adapter.
+  # shellcheck source=/dev/null
   source "$DOTFILES_DIR/platforms/${PLATFORM}/adapter.sh"
+  # Platform detection restricts this path to a shipped registry.
+  # shellcheck source=/dev/null
   source "$DOTFILES_DIR/platforms/${PLATFORM}/registry.sh"
   resolve_selection
   source_resolved_modules

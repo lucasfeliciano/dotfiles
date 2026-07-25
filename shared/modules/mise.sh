@@ -31,8 +31,11 @@ check_mise() {
     "run './setup.sh --module mise'"
   verify_symlink "$DOTFILES_DIR/shared/config/uv/uv.toml" "$HOME/.config/uv/uv.toml" \
     "run './setup.sh --module mise'"
-  [[ -d "$PLATFORM_PNPM_HOME" ]] && verify_pass "PNPM home exists at ${PLATFORM_PNPM_HOME}" ||
+  if [[ -d "$PLATFORM_PNPM_HOME" ]]; then
+    verify_pass "PNPM home exists at ${PLATFORM_PNPM_HOME}"
+  else
     verify_fail "PNPM home is missing; run './setup.sh --module mise'"
+  fi
 
   for tool in node python pnpm uv; do
     verify_mise_tool "$tool"

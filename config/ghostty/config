@@ -1,8 +1,0 @@
-# Appereance
-font-family = MonoLisa
-macos-titlebar-proxy-icon = hidden
-theme = Catppuccin Latte
-
-# Behaviour
-confirm-close-surface = false
-mouse-scroll-multiplier=5

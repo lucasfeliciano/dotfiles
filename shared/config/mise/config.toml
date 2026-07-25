@@ -1,8 +1,9 @@
 [settings]
 auto_install = true
-legacy_version_file = true
 idiomatic_version_file_enable_tools = ["node"]
 
 [tools]
 node = "lts"
+python = "latest"
 pnpm = "latest"
+uv = "latest"

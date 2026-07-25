@@ -1,23 +1,26 @@
 # Oh My Zsh, plugins, theme, and shell config symlinks.
 # Sourced by setup.sh — do not execute directly.
 
-ZSH_REQUIRED_BINS=(eza)
+preflight_zsh() {
+  local command_name
+  for command_name in curl git zsh eza; do
+    require_command_or_module "$command_name" packages \
+      "run './setup.sh --profile base' or include 'packages' in --module"
+  done
+}
 
 setup_zsh() {
-  for bin in "${ZSH_REQUIRED_BINS[@]}"; do
-    if ! command -v "$bin" &>/dev/null; then
-      error "$bin is not installed. Run './setup.sh brew' first."
-      return 1
-    fi
-  done
-
   local ZSH="$HOME/.oh-my-zsh"
   local ZSH_CUSTOM="$ZSH/custom"
+  local zsh_path
+
+  zsh_path="$(command -v zsh)"
 
   if [ -d "$ZSH" ]; then
     e_warning "Oh My Zsh is already installed. skipping.."
   else
-    run env RUNZSH=no CHSH=no sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+    run env RUNZSH=no CHSH=no sh -c \
+      'curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sh'
   fi
 
   if [ -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ]; then
@@ -50,13 +53,15 @@ setup_zsh() {
     run git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$ZSH_CUSTOM/themes/powerlevel10k"
   fi
 
-  run ln -sf "$DOTFILES_DIR/config/zsh/.aliases" ~/.aliases
-  run ln -sf "$DOTFILES_DIR/config/zsh/.zshrc" ~/.zshrc
-  run ln -sf "$DOTFILES_DIR/config/zsh/.p10k.zsh" ~/.p10k.zsh
+  link_config "$DOTFILES_DIR/shared/config/zsh/.aliases" "$HOME/.aliases"
+  link_config "$DOTFILES_DIR/shared/config/zsh/.zshrc" "$HOME/.zshrc"
+  link_config "$DOTFILES_DIR/shared/config/zsh/.p10k.zsh" "$HOME/.p10k.zsh"
+  link_config "$PLATFORM_ZSH_FRAGMENT" "$HOME/.config/zsh/platform.zsh"
+  ensure_local_copy "$DOTFILES_DIR/shared/config/zsh/.zshrc_private.template" "$HOME/.zshrc_private"
 
-  if [[ -f ~/.zshrc_private || -L ~/.zshrc_private ]]; then
-    e_warning "~/.zshrc_private already exists. skipping.."
+  if [[ "${SHELL:-}" == "$zsh_path" ]]; then
+    e_note "Zsh is already the login shell"
   else
-    run cp "$DOTFILES_DIR/config/zsh/.zshrc_private.template" ~/.zshrc_private
+    platform_change_login_shell "$zsh_path"
   fi
 }

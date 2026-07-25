@@ -1,7 +1,7 @@
 # macOS system preferences.
 # Sourced by setup.sh — do not execute directly.
 
-setup_macos() {
+setup_system() {
   # ── Dock ──────────────────────────────────────────────────────────────────
   # Auto-hide the Dock
   run defaults write com.apple.dock autohide -bool true

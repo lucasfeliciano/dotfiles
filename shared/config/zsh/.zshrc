@@ -5,6 +5,9 @@ if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
 
+# User-installed tools.
+export PATH="$HOME/.local/bin:$PATH"
+
 # Path to your oh-my-zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
 
@@ -29,16 +32,10 @@ unset LS_COLORS
 
 # Set aliases
 source $HOME/.aliases
+source "$HOME/.config/zsh/platform.zsh"
 
 # mise
 eval "$(mise activate zsh)"
-
-# We need to set the PNPM_HOME to the correct path for the global binaries to be found.
-export PNPM_HOME="$HOME/Library/pnpm"
-case ":$PATH:" in
-  *":$PNPM_HOME/bin:"*) ;;
-  *) export PATH="$PNPM_HOME/bin:$PATH" ;;
-esac
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
@@ -47,4 +44,3 @@ esac
 if [ -f ~/.zshrc_private ]; then
     source ~/.zshrc_private
 fi
-export PATH="$HOME/.local/bin:$PATH"

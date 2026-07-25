@@ -39,7 +39,7 @@ test_bash_syntax() {
   if command -v zsh >/dev/null 2>&1; then
     while IFS= read -r -d '' script; do
       zsh -n "$script"
-    done < <(find "$REPO_DIR/config/zsh" -type f -print0)
+    done < <(find "$REPO_DIR/shared/config/zsh" "$REPO_DIR/platforms/macos/config/zsh" "$REPO_DIR/platforms/ubuntu/config/zsh" -type f -print0)
     pass "all Zsh configuration parses"
   fi
 }
@@ -132,31 +132,67 @@ module_order() {
   local platform="$1"
   local version="$2"
   local home_dir="$3"
+  shift 3
 
   DOTFILES_PLATFORM_OVERRIDE="$platform" \
     DOTFILES_PLATFORM_VERSION_OVERRIDE="$version" \
     HOME="$home_dir" \
-    "$REPO_DIR/setup.sh" --dry-run |
+    "$REPO_DIR/setup.sh" --dry-run "$@" |
     sed -n 's/.*Setting up \([a-z]*\).*/\1/p' |
     paste -sd ' ' -
 }
 
 test_module_ordering() {
-  local ubuntu_order macos_order
 
   mkdir -p "$TEST_ROOT/order-home"
-  ubuntu_order="$(module_order ubuntu 26.04 "$TEST_ROOT/order-home")"
-  macos_order="$(module_order macos test "$TEST_ROOT/order-home")"
+  assert_equals \
+    "packages zsh eza mise ghostty git system" \
+    "$(module_order macos test "$TEST_ROOT/order-home")" \
+    "macOS base canonical order"
+  assert_equals \
+    "packages zsh eza mise ghostty git" \
+    "$(module_order ubuntu 26.04 "$TEST_ROOT/order-home")" \
+    "Ubuntu base canonical order"
+  assert_equals \
+    "mise ghostty git" \
+    "$(module_order ubuntu 26.04 "$TEST_ROOT/order-home" --module git ghostty mise)" \
+    "direct modules use canonical order"
+  pass "base profiles and direct modules use canonical order"
+}
 
-  assert_equals \
-    "apt zsh eza mise ghostty git vscode security virtualization" \
-    "$ubuntu_order" \
-    "Ubuntu module ordering"
-  assert_equals \
-    "brew zsh eza mise ghostty git macos" \
-    "$macos_order" \
-    "macOS module ordering"
-  pass "default module order is platform-specific and stable"
+assert_command_fails_with() {
+  local expected="$1"
+  shift
+  local output status
+
+  set +e
+  output="$("$@" 2>&1)"
+  status=$?
+  set -e
+  ((status != 0)) || fail "command unexpectedly succeeded: $*"
+  [[ "$output" == *"$expected"* ]] || {
+    printf 'expected output containing: %s\nactual: %s\n' "$expected" "$output" >&2
+    fail "failure output"
+  }
+}
+
+test_selector_contract() {
+  local setup=(env DOTFILES_PLATFORM_OVERRIDE=ubuntu DOTFILES_PLATFORM_VERSION_OVERRIDE=26.04 HOME="$TEST_ROOT/selectors-home" "$REPO_DIR/setup.sh")
+
+  assert_command_fails_with "requires at least one name" "${setup[@]}" --profile
+  assert_command_fails_with "requires at least one name" "${setup[@]}" --module --dry-run
+  assert_command_fails_with "mutually exclusive" "${setup[@]}" --profile base --module mise
+  assert_command_fails_with "cannot be combined" "${setup[@]}" --dry-run --check
+  assert_command_fails_with "Positional module syntax was removed" "${setup[@]}" mise
+  assert_command_fails_with "Module 'system' is not available on ubuntu" "${setup[@]}" --dry-run --module system
+  assert_command_fails_with "Profile 'networking' is not available on macos" \
+    env DOTFILES_PLATFORM_OVERRIDE=macos HOME="$TEST_ROOT/selectors-home" "$REPO_DIR/setup.sh" --dry-run --profile networking
+  assert_command_fails_with "Required command 'mise' is missing" \
+    env PATH=/usr/bin:/bin DOTFILES_PLATFORM_OVERRIDE=ubuntu DOTFILES_PLATFORM_VERSION_OVERRIDE=26.04 \
+      HOME="$TEST_ROOT/selectors-home" "$REPO_DIR/setup.sh" --module mise
+  [[ -z "$(find "$TEST_ROOT/selectors-home" -mindepth 1 -print -quit 2>/dev/null)" ]] || \
+    fail "selector or prerequisite failure mutated HOME"
+  pass "selectors validate names, modes, and platform ownership before execution"
 }
 
 test_conflict_backup_and_idempotency() {
@@ -227,7 +263,7 @@ test_private_file_preserved() {
     source "$REPO_DIR/shared/lib/log.sh"
     source "$REPO_DIR/shared/lib/command.sh"
     source "$REPO_DIR/shared/lib/fs.sh"
-    ensure_local_copy "$REPO_DIR/config/zsh/.zshrc_private.template" "$HOME/.zshrc_private"
+    ensure_local_copy "$REPO_DIR/shared/config/zsh/.zshrc_private.template" "$HOME/.zshrc_private"
   ' >/dev/null
 
   assert_equals "secret-local-setting" "$(sed -n '1p' "$home_dir/.zshrc_private")" "private config preservation"
@@ -274,60 +310,112 @@ test_bootstrap_dry_run() {
   pass "bootstrap dry-run is side-effect-free before cloning"
 }
 
-test_selective_modules_and_platform_guards() {
-  local output
-
-  output="$(
-    DOTFILES_PLATFORM_OVERRIDE=ubuntu \
-      DOTFILES_PLATFORM_VERSION_OVERRIDE=26.04 \
-      HOME="$TEST_ROOT/selective-home" \
-      "$REPO_DIR/setup.sh" --dry-run apt mise 2>&1
-  )"
-  [[ "$output" == *"Setting up apt"* ]] || fail "selective apt module"
-  [[ "$output" == *"Setting up mise"* ]] || fail "selective mise module"
-  [[ "$output" != *"Setting up zsh"* ]] || fail "unrequested module ran"
-
-  if DOTFILES_PLATFORM_OVERRIDE=macos HOME="$TEST_ROOT/selective-home" \
-    "$REPO_DIR/setup.sh" --dry-run apt >/dev/null 2>&1; then
-    fail "cross-platform module guard"
-  fi
-  pass "selective execution and platform module guards work"
-}
-
 test_runtime_and_network_policy() {
-  grep -q '^python = "latest"$' "$REPO_DIR/config/mise/config.toml" ||
+  grep -q '^python = "latest"$' "$REPO_DIR/shared/config/mise/config.toml" ||
     fail "mise global Python"
-  grep -q '^uv = "latest"$' "$REPO_DIR/config/mise/config.toml" ||
+  grep -q '^uv = "latest"$' "$REPO_DIR/shared/config/mise/config.toml" ||
     fail "mise global uv"
   grep -q '^idiomatic_version_file_enable_tools = \["node"\]$' \
-    "$REPO_DIR/config/mise/config.toml" ||
+    "$REPO_DIR/shared/config/mise/config.toml" ||
     fail "mise Python idiomatic-version policy"
-  grep -q '^python-preference = "system"$' "$REPO_DIR/config/uv/uv.toml" ||
+  grep -q '^python-preference = "system"$' "$REPO_DIR/shared/config/uv/uv.toml" ||
     fail "uv system Python preference"
-  grep -q '^python-downloads = "automatic"$' "$REPO_DIR/config/uv/uv.toml" ||
+  grep -q '^python-downloads = "automatic"$' "$REPO_DIR/shared/config/uv/uv.toml" ||
     fail "uv automatic Python downloads"
-  if grep -q '<forward' "$REPO_DIR/config/libvirt/lab-isolated.xml"; then
-    fail "isolated network forwarding"
-  fi
-  grep -q '192.168.77.1' "$REPO_DIR/config/libvirt/lab-isolated.xml" ||
-    fail "isolated network subnet"
-  pass "mise/uv ownership and isolated-network policies are encoded"
+  pass "mise and uv ownership policies are encoded"
 }
 
 test_package_scope() {
-  local -a manifests=(
-    "$REPO_DIR/packages/ubuntu-base.txt"
-    "$REPO_DIR/packages/ubuntu-virtualization.txt"
-  )
-
-  grep -qx 'ghostty' "$REPO_DIR/packages/ubuntu-base.txt" || fail "Ghostty APT package"
-  grep -qx 'qemu-kvm' "$REPO_DIR/packages/ubuntu-virtualization.txt" || fail "KVM package"
-  grep -q 'alias fd="fdfind"' "$REPO_DIR/config/zsh/.aliases" || fail "Ubuntu fd command alias"
-  grep -q 'alias bat="batcat"' "$REPO_DIR/config/zsh/.aliases" || fail "Ubuntu bat command alias"
-  if grep -Eiq 'docker|podman|openssh-server|kali|metasploit' "${manifests[@]}"; then
-    fail "excluded heavyweight or exposed service package"
+  grep -qx 'code --classic' "$REPO_DIR/platforms/ubuntu/packages/base.snap" || fail "VS Code classic Snap"
+  grep -qx 'ghostty' "$REPO_DIR/platforms/ubuntu/packages/base.apt" || fail "Ghostty base package"
+  if grep -Eq '^(iproute2|iputils-ping|dnsutils|netcat-openbsd|tcpdump|traceroute|mtr-tiny|whois|qemu-kvm|libvirt)' \
+    "$REPO_DIR/platforms/ubuntu/packages/base.apt"; then
+    fail "optional packages leaked into Ubuntu base"
   fi
-  pass "APT manifests contain the intended package scope"
+  grep -q '^config-file = platform$' "$REPO_DIR/shared/config/ghostty/config" || fail "Ghostty overlay include"
+  if grep -q '^theme =' "$REPO_DIR/shared/config/ghostty/config"; then
+    fail "shared Ghostty theme ownership"
+  fi
+  grep -q '^theme = Catppuccin Latte$' "$REPO_DIR/platforms/macos/config/ghostty.conf" || fail "macOS Ghostty theme"
+  if grep -q '^theme =' "$REPO_DIR/platforms/ubuntu/config/ghostty.conf"; then
+    fail "Ubuntu must retain Ghostty's default theme"
+  fi
+  if grep -Eq 'macos|ubuntu|OSTYPE|Library/pnpm|fdfind|batcat' "$REPO_DIR/shared/modules/"*.sh "$REPO_DIR/shared/config/zsh/.zshrc"; then
+    fail "hidden platform branch in shared behavior"
+  fi
+  pass "base manifests and platform overlays own platform-specific behavior"
+}
+
+test_manifest_parsing() {
+  local invalid_apt="$TEST_ROOT/invalid.apt" invalid_snap="$TEST_ROOT/invalid.snap"
+  local marker="$TEST_ROOT/manifest-command-ran" output
+  printf 'curl | sh\n' > "$invalid_apt"
+  printf 'code --classic unexpected\n' > "$invalid_snap"
+
+  if REPO_DIR="$REPO_DIR" MANIFEST="$invalid_apt" MARKER="$marker" bash -c '
+    source "$REPO_DIR/shared/lib/log.sh"
+    source "$REPO_DIR/platforms/ubuntu/lib/packages.sh"
+    run() { touch "$MARKER"; }
+    DRY_RUN=true
+    apt_install_manifest "$MANIFEST"
+  ' >/dev/null 2>&1; then
+    fail "invalid APT manifest acceptance"
+  fi
+  [[ ! -e "$marker" ]] || fail "invalid APT entry reached command execution"
+
+  if REPO_DIR="$REPO_DIR" MANIFEST="$invalid_snap" MARKER="$marker" bash -c '
+    source "$REPO_DIR/shared/lib/log.sh"
+    source "$REPO_DIR/platforms/ubuntu/lib/packages.sh"
+    run() { touch "$MARKER"; }
+    DRY_RUN=true
+    snap_install_manifest "$MANIFEST"
+  ' >/dev/null 2>&1; then
+    fail "invalid Snap manifest acceptance"
+  fi
+  [[ ! -e "$marker" ]] || fail "invalid Snap entry reached command execution"
+
+  output="$(
+    REPO_DIR="$REPO_DIR" bash -c '
+      source "$REPO_DIR/shared/lib/log.sh"
+      source "$REPO_DIR/platforms/ubuntu/lib/packages.sh"
+      run() { printf "%s " "$@"; }
+      DRY_RUN=true
+      snap_install_manifest "$REPO_DIR/platforms/ubuntu/packages/base.snap"
+    '
+  )"
+  [[ "$output" == *"sudo snap install code --classic"* ]] || fail "classic Snap parsing"
+
+  output="$(
+    REPO_DIR="$REPO_DIR" bash -c '
+      source "$REPO_DIR/shared/lib/log.sh"
+      source "$REPO_DIR/platforms/ubuntu/lib/packages.sh"
+      DRY_RUN=false
+      snap() { [[ "$1 $2" == "list code" ]]; }
+      run() { printf "unexpected mutation: %s\n" "$*"; return 1; }
+      snap_install_manifest "$REPO_DIR/platforms/ubuntu/packages/base.snap"
+    '
+  )"
+  [[ "$output" != *"unexpected mutation"* ]] || fail "installed Snap reinstallation"
+  pass "APT and Snap manifests reject command syntax and preserve classic confinement"
+}
+
+test_git_prompts_only_for_missing_identity() {
+  local home_dir="$TEST_ROOT/git-home" output
+  mkdir -p "$home_dir"
+  HOME="$home_dir" git config --global user.name "Configured Name"
+
+  output="$(
+    HOME="$home_dir" REPO_DIR="$REPO_DIR" bash -c '
+      source "$REPO_DIR/shared/lib/log.sh"
+      source "$REPO_DIR/shared/lib/command.sh"
+      source "$REPO_DIR/shared/modules/git.sh"
+      DRY_RUN=true
+      setup_git
+    '
+  )"
+  [[ "$output" != *"missing git user.name"* ]] || fail "configured Git name prompt"
+  [[ "$output" == *"missing git user.email"* ]] || fail "missing Git email prompt"
+  pass "Git setup prompts only for missing identity values"
 }
 
 test_bash_syntax
@@ -335,12 +423,14 @@ test_platform_detection
 test_command_rendering_and_failure_status
 test_verify_reporter_status
 test_module_ordering
+test_selector_contract
 test_conflict_backup_and_idempotency
 test_private_file_preserved
 test_dry_run_has_no_side_effects
 test_bootstrap_dry_run
-test_selective_modules_and_platform_guards
 test_runtime_and_network_policy
 test_package_scope
+test_manifest_parsing
+test_git_prompts_only_for_missing_identity
 
 printf '1..%d\n' "$pass_count"

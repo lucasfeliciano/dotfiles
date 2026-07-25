@@ -1,0 +1,3 @@
+config-file = platform
+confirm-close-surface = false
+mouse-scroll-multiplier = 5

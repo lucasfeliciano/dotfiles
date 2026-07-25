@@ -142,6 +142,54 @@ module_order() {
     paste -sd ' ' -
 }
 
+check_output() {
+  local platform="$1" version="$2" home_dir="$3"
+  shift 3
+  set +e
+  DOTFILES_PLATFORM_OVERRIDE="$platform" \
+    DOTFILES_PLATFORM_VERSION_OVERRIDE="$version" \
+    HOME="$home_dir" \
+    "$REPO_DIR/setup.sh" --check "$@" 2>&1
+  set -e
+}
+
+test_check_mode_selection_and_safety() {
+  local home_dir fake_bin sudo_marker before after output
+  home_dir="$TEST_ROOT/check-home"
+  fake_bin="$TEST_ROOT/check-bin"
+  sudo_marker="$TEST_ROOT/check-sudo-ran"
+  mkdir -p "$home_dir" "$fake_bin"
+  printf '#!/bin/sh\ntouch "$CHECK_SUDO_MARKER"\nexit 99\n' > "$fake_bin/sudo"
+  chmod +x "$fake_bin/sudo"
+  before="$(find "$home_dir" -mindepth 1 -print | sort)"
+  output="$(PATH="$fake_bin:$PATH" CHECK_SUDO_MARKER="$sudo_marker" \
+    check_output ubuntu 26.04 "$home_dir" --profile networking)"
+  after="$(find "$home_dir" -mindepth 1 -print | sort)"
+
+  assert_equals "$before" "$after" "check mode filesystem state"
+  [[ ! -e "$sudo_marker" ]] || fail "check mode requested privilege"
+  [[ "$output" == *"Checking packages"* ]] || fail "base package check selection"
+  [[ "$output" == *"Checking networking"* ]] || fail "networking check selection"
+  [[ "$output" != *"N/A: networking has no meaningful automated check"* ]] || \
+    fail "networking check implementation"
+  [[ "$output" != *"Checking virtualization"* ]] || fail "unselected virtualization check"
+
+  output="$(check_output ubuntu 26.04 "$home_dir" --profile virtualization networking)"
+  [[ "$output" == *"Checking networking"* && "$output" == *"Checking virtualization"* ]] || \
+    fail "composed profile checks"
+  output="$(check_output macos test "$home_dir" --module system)"
+  [[ "$output" == *"N/A: system has no meaningful automated check"* ]] || \
+    fail "explicit not-applicable system check"
+  pass "check mode uses profile resolution and performs no mutation"
+}
+
+test_production_helper_ownership() {
+  assert_equals "1" "$(grep -R -h '^run() {' "$REPO_DIR/shared" "$REPO_DIR/platforms" | wc -l | tr -d ' ')" "single run helper"
+  assert_equals "1" "$(grep -R -h '^verify_pass() {' "$REPO_DIR/shared" "$REPO_DIR/platforms" | wc -l | tr -d ' ')" "single verify reporter"
+  assert_equals "1" "$(grep -R -h '^link_config() {' "$REPO_DIR/shared" "$REPO_DIR/platforms" | wc -l | tr -d ' ')" "single link helper"
+  pass "production helpers have one owner"
+}
+
 test_module_ordering() {
 
   mkdir -p "$TEST_ROOT/order-home"
@@ -737,6 +785,8 @@ test_bash_syntax
 test_platform_detection
 test_command_rendering_and_failure_status
 test_verify_reporter_status
+test_check_mode_selection_and_safety
+test_production_helper_ownership
 test_module_ordering
 test_networking_profile
 test_composed_optional_profiles

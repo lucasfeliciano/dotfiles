@@ -1,4 +1,50 @@
 LIBVIRT_SYSTEM_VIRSH=(sudo env LC_ALL=C virsh -c qemu:///system)
+LIBVIRT_CHECK_VIRSH=(env LC_ALL=C virsh -c qemu:///system)
+
+check_virtualization() {
+  local group
+
+  if command -v kvm-ok >/dev/null 2>&1 && kvm-ok >/dev/null 2>&1; then
+    verify_pass "KVM acceleration is available"
+  else
+    verify_fail "KVM acceleration is unavailable; verify firmware virtualization support"
+  fi
+
+  for group in libvirt kvm; do
+    if id -nG "$USER" | tr ' ' '\n' | grep -qx "$group"; then
+      verify_pass "${USER} belongs to ${group}"
+    else
+      verify_fail "${USER} is not active in ${group}; run './setup.sh --module virtualization' then log out or reboot"
+    fi
+  done
+
+  if systemctl is-enabled --quiet libvirtd.service && systemctl is-active --quiet libvirtd.service; then
+    verify_pass "libvirtd.service is enabled and active"
+  else
+    verify_fail "libvirtd.service is not enabled and active; run './setup.sh --module virtualization'"
+  fi
+
+  if ! command -v virsh >/dev/null 2>&1; then
+    verify_fail "virsh is missing; run './setup.sh --module virtualization'"
+    return
+  fi
+
+  if libvirt_network_is_active default "${LIBVIRT_CHECK_VIRSH[@]}" &&
+    libvirt_network_autostarts default "${LIBVIRT_CHECK_VIRSH[@]}" &&
+    libvirt_network_is_nat default "${LIBVIRT_CHECK_VIRSH[@]}"; then
+    verify_pass "default libvirt network is active, autostarting, and NAT"
+  else
+    verify_fail "default libvirt NAT network is not ready; run './setup.sh --module virtualization'"
+  fi
+
+  if libvirt_network_is_active vm-isolated "${LIBVIRT_CHECK_VIRSH[@]}" &&
+    libvirt_network_autostarts vm-isolated "${LIBVIRT_CHECK_VIRSH[@]}" &&
+    libvirt_network_matches_isolated_policy vm-isolated "${LIBVIRT_CHECK_VIRSH[@]}"; then
+    verify_pass "vm-isolated is active, autostarting, and isolated on 192.168.77.0/24"
+  else
+    verify_fail "vm-isolated does not match its required state; run './setup.sh --module virtualization'"
+  fi
+}
 
 setup_virtualization() {
   local group missing_groups=""

@@ -1,6 +1,23 @@
 # Git global configuration.
 # Sourced by setup.sh — do not execute directly.
 
+check_git() {
+  local value
+  verify_command git "run './setup.sh --module packages git'"
+
+  value="$(git config --global --get user.name 2>/dev/null || true)"
+  [[ -n "$value" ]] && verify_pass "Git user.name is configured" ||
+    verify_fail "Git user.name is missing; run './setup.sh --module git'"
+
+  value="$(git config --global --get user.email 2>/dev/null || true)"
+  [[ -n "$value" ]] && verify_pass "Git user.email is configured" ||
+    verify_fail "Git user.email is missing; run './setup.sh --module git'"
+
+  value="$(git config --global --get pull.rebase 2>/dev/null || true)"
+  [[ "$value" == "true" ]] && verify_pass "Git pull.rebase is true" ||
+    verify_fail "Git pull.rebase is not true; run './setup.sh --module git'"
+}
+
 setup_git() {
   local name email pull_rebase
 

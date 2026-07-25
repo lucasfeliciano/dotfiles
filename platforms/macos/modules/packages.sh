@@ -1,6 +1,16 @@
 # Homebrew installation and dependency management.
 # Sourced by setup.sh — do not execute directly.
 
+check_packages() {
+  if ! command -v brew >/dev/null 2>&1; then
+    verify_fail "Homebrew is missing; run './setup.sh --module packages'"
+  elif brew bundle check --file="$DOTFILES_DIR/platforms/macos/packages/Brewfile" >/dev/null 2>&1; then
+    verify_pass "Homebrew bundle is satisfied"
+  else
+    verify_fail "Homebrew bundle is incomplete; run './setup.sh --module packages'"
+  fi
+}
+
 setup_packages() {
   local brew_bin shellenv_line
 

@@ -9,6 +9,20 @@ preflight_zsh() {
   done
 }
 
+check_zsh() {
+  verify_command zsh "run './setup.sh --module packages zsh'"
+  verify_command eza "run './setup.sh --module packages zsh'"
+  verify_symlink "$DOTFILES_DIR/shared/config/zsh/.zshrc" "$HOME/.zshrc" "run './setup.sh --module zsh'"
+  verify_symlink "$DOTFILES_DIR/shared/config/zsh/.aliases" "$HOME/.aliases" "run './setup.sh --module zsh'"
+  verify_symlink "$DOTFILES_DIR/shared/config/zsh/.p10k.zsh" "$HOME/.p10k.zsh" "run './setup.sh --module zsh'"
+  verify_symlink "$PLATFORM_ZSH_FRAGMENT" "$HOME/.config/zsh/platform.zsh" "run './setup.sh --module zsh'"
+  if [[ -f "$HOME/.zshrc_private" && ! -L "$HOME/.zshrc_private" ]]; then
+    verify_pass "$HOME/.zshrc_private is a local file"
+  else
+    verify_fail "$HOME/.zshrc_private must be a local file; run './setup.sh --module zsh'"
+  fi
+}
+
 setup_zsh() {
   local ZSH="$HOME/.oh-my-zsh"
   local ZSH_CUSTOM="$ZSH/custom"

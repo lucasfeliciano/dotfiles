@@ -37,17 +37,24 @@ libvirt_xml_tag_attribute_equals() {
   fi
 
   while [[ -n "$attributes" ]]; do
+    [[ "$attributes" == " "* ]] || return 1
     while [[ "$attributes" == " "* ]]; do
       attributes="${attributes# }"
     done
     [[ -n "$attributes" ]] || break
     [[ "$attributes" == *=* ]] || return 1
     attribute="${attributes%%=*}"
+    while [[ "$attribute" == *" " ]]; do
+      attribute="${attribute% }"
+    done
     [[ "$attribute" =~ ^[a-zA-Z_:][a-zA-Z0-9_.:-]*$ ]] || return 1
     [[ "$seen_attributes" != *"|${attribute}|"* ]] || return 1
     seen_attributes="${seen_attributes}${attribute}|"
 
     attributes="${attributes#*=}"
+    while [[ "$attributes" == " "* ]]; do
+      attributes="${attributes# }"
+    done
     quote="${attributes:0:1}"
     [[ "$quote" == "'" || "$quote" == '"' ]] || return 1
     attributes="${attributes:1}"
@@ -65,7 +72,7 @@ libvirt_xml_tag_attribute_equals() {
 }
 
 libvirt_xml_direct_child_tag_has_attributes() {
-  local xml="$1" tag_name="$2" tag name attribute value matches
+  local xml="$1" tag_name="$2" tag raw_tag name attribute value matches
   local depth=0 index root_seen=false found=false
   local -a expected elements
   shift 2
@@ -79,12 +86,16 @@ libvirt_xml_direct_child_tag_has_attributes() {
     [[ "$xml" == *">"* ]] || return 1
     tag="${xml%%>*}"
     xml="${xml#*>}"
+    raw_tag="$tag"
     while [[ "$tag" == *" " ]]; do
       tag="${tag% }"
     done
 
     case "$tag" in
-      '?'*) continue ;;
+      '?'*)
+        [[ "$raw_tag" == *\? ]] || return 1
+        continue
+        ;;
       '!'*) return 1 ;;
       '/'*)
         name="${tag#/}"
@@ -134,7 +145,7 @@ libvirt_network_is_nat() {
 }
 
 libvirt_xml_matches_isolated_policy() {
-  local xml="$1" leading tag name matches
+  local xml="$1" leading tag raw_tag name matches
   local depth=0 root_seen=false ip_count=0 matching_ip_count=0
   local dhcp_count=0 range_count=0 matching_range_count=0
   local -a elements
@@ -151,12 +162,14 @@ libvirt_xml_matches_isolated_policy() {
     [[ "$xml" == *">"* ]] || return 1
     tag="${xml%%>*}"
     xml="${xml#*>}"
+    raw_tag="$tag"
     while [[ "$tag" == *" " ]]; do
       tag="${tag% }"
     done
 
     case "$tag" in
       '?'*)
+        [[ "$raw_tag" == *\? ]] || return 1
         [[ "$root_seen" == "false" && "$depth" -eq 0 ]] || return 1
         continue
         ;;

@@ -719,8 +719,31 @@ test_libvirt_policy_inspection() {
       printf "%s\n" \
         "<network><ip address=\"192.168.77.1\" netmask=\"255.255.255.0\"><dhcp><range start=\"192.168.77.100\" end=\"192.168.77.254\"/></dhcp ignored></ip></network>"
     }
+    fake_adjacent_attributes() {
+      printf "%s\n" \
+        "<network><ip address=\"192.168.77.1\"netmask=\"255.255.255.0\"><dhcp><range start=\"192.168.77.100\" end=\"192.168.77.254\"/></dhcp></ip></network>"
+    }
+    fake_unterminated_xml_declaration() {
+      printf "%s\n" \
+        "<?xml version=\"1.0\"><network><ip address=\"192.168.77.1\" netmask=\"255.255.255.0\"><dhcp><range start=\"192.168.77.100\" end=\"192.168.77.254\"/></dhcp></ip></network>"
+    }
+    fake_separated_xml_declaration_terminator() {
+      printf "%s\n" \
+        "<?xml version=\"1.0\"? ><network><ip address=\"192.168.77.1\" netmask=\"255.255.255.0\"><dhcp><range start=\"192.168.77.100\" end=\"192.168.77.254\"/></dhcp></ip></network>"
+    }
+    fake_valid_xml_declaration() {
+      printf "%s\n" \
+        "<?xml version=\"1.0\"?><network><ip address=\"192.168.77.1\" netmask=\"255.255.255.0\"><dhcp><range start=\"192.168.77.100\" end=\"192.168.77.254\"/></dhcp></ip></network>"
+    }
+    fake_xml_spaces_around_equals() {
+      printf "%s\n" \
+        "<network><ip address = \"192.168.77.1\" netmask= '\''255.255.255.0'\''><dhcp><range start = \"192.168.77.100\" end= '\''192.168.77.254'\''/></dhcp></ip></network>"
+    }
     fake_nat() {
       printf "%s\n" "<network><forward mode=\"nat\"/></network>"
+    }
+    fake_unterminated_nat_declaration() {
+      printf "%s\n" "<?xml version=\"1.0\"><network><forward mode=\"nat\"/></network>"
     }
     fake_disjoint_nat() {
       printf "%s\n" \
@@ -753,6 +776,34 @@ test_libvirt_policy_inspection() {
     assert_isolated_rejected fake_duplicate_attribute
     assert_isolated_rejected fake_malformed
     assert_isolated_rejected fake_malformed_closing_tag
+    residual_failures=0
+    if libvirt_network_matches_isolated_policy vm-isolated fake_adjacent_attributes; then
+      printf "accepted invalid isolated-network fixture: fake_adjacent_attributes\n" >&2
+      residual_failures=$((residual_failures + 1))
+    fi
+    if libvirt_network_matches_isolated_policy vm-isolated fake_unterminated_xml_declaration; then
+      printf "accepted invalid isolated-network fixture: fake_unterminated_xml_declaration\n" >&2
+      residual_failures=$((residual_failures + 1))
+    fi
+    if libvirt_network_matches_isolated_policy vm-isolated fake_separated_xml_declaration_terminator; then
+      printf "accepted invalid isolated-network fixture: fake_separated_xml_declaration_terminator\n" >&2
+      residual_failures=$((residual_failures + 1))
+    fi
+    if ! libvirt_network_matches_isolated_policy vm-isolated fake_valid_xml_declaration; then
+      printf "rejected valid isolated-network fixture: fake_valid_xml_declaration\n" >&2
+      residual_failures=$((residual_failures + 1))
+    fi
+    if ! libvirt_network_matches_isolated_policy vm-isolated fake_xml_spaces_around_equals; then
+      printf "rejected valid isolated-network fixture: fake_xml_spaces_around_equals\n" >&2
+      residual_failures=$((residual_failures + 1))
+    fi
+    if libvirt_network_is_nat default fake_unterminated_nat_declaration; then
+      printf "accepted invalid NAT-network fixture: fake_unterminated_nat_declaration\n" >&2
+      residual_failures=$((residual_failures + 1))
+    fi
+    if ((residual_failures > 0)); then
+      exit 1
+    fi
     libvirt_network_is_nat default fake_nat
     if libvirt_network_is_nat default fake_disjoint_nat; then
       exit 1

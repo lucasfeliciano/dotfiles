@@ -414,6 +414,8 @@ test_manifest_parsing() {
 
 test_failure_propagation() {
   local marker="$TEST_ROOT/setup-packages-continued" download_marker="$TEST_ROOT/setup-packages-download"
+  local package_root="$TEST_ROOT/snap-install-failure" install_marker="$TEST_ROOT/snap-install-called"
+  local continuation_marker="$TEST_ROOT/snap-install-continued"
 
   if REPO_DIR="$REPO_DIR" bash -c '
     source "$REPO_DIR/shared/lib/log.sh"
@@ -474,6 +476,37 @@ test_failure_propagation() {
     fail "setup_packages masked a Snap helper failure"
   fi
   [[ ! -e "$download_marker" ]] || fail "setup_packages downloaded after a Snap helper failure"
+
+  mkdir -p "$package_root/platforms/ubuntu/packages"
+  printf 'unused\n' > "$package_root/platforms/ubuntu/packages/base.apt"
+  printf 'code --classic\n' > "$package_root/platforms/ubuntu/packages/base.snap"
+  if REPO_DIR="$REPO_DIR" DOTFILES_DIR="$package_root" INSTALL_MARKER="$install_marker" CONTINUATION_MARKER="$continuation_marker" bash -c '
+    source "$REPO_DIR/shared/lib/log.sh"
+    source "$REPO_DIR/platforms/ubuntu/lib/packages.sh"
+    source "$REPO_DIR/platforms/ubuntu/modules/packages.sh"
+    DRY_RUN=false
+    apt_install_manifest() { :; }
+    snap() { return 1; }
+    command() {
+      if [[ "$1" == "-v" && "$2" == "mise" ]]; then
+        return 0
+      fi
+      builtin command "$@"
+    }
+    run() {
+      if [[ "$1 $2 $3" == "sudo snap install" ]]; then
+        touch "$INSTALL_MARKER"
+        return 1
+      fi
+      touch "$CONTINUATION_MARKER"
+    }
+    e_note() { touch "$CONTINUATION_MARKER"; }
+    setup_packages
+  ' >/dev/null 2>&1; then
+    fail "setup_packages masked a failed Snap installation"
+  fi
+  [[ -e "$install_marker" ]] || fail "failed Snap installation was not exercised"
+  [[ ! -e "$continuation_marker" ]] || fail "setup_packages continued after a failed Snap installation"
   pass "preflight and setup failures stop their plans immediately"
 }
 

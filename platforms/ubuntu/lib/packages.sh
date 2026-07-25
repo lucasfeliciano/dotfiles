@@ -20,7 +20,7 @@ read_apt_manifest() {
 
 apt_refresh_once() {
   if [[ "$APT_METADATA_REFRESHED" != "true" ]]; then
-    run sudo apt-get update
+    run sudo apt-get update || return
     APT_METADATA_REFRESHED=true
   fi
 }
@@ -31,8 +31,8 @@ apt_install_manifest() {
   read_apt_manifest "$manifest" || return
 
   if [[ "$DRY_RUN" == "true" ]]; then
-    apt_refresh_once
-    run sudo apt-get install -y "${MANIFEST_PACKAGES[@]}"
+    apt_refresh_once || return
+    run sudo apt-get install -y "${MANIFEST_PACKAGES[@]}" || return
     return
   fi
 
@@ -43,8 +43,8 @@ apt_install_manifest() {
     e_note "APT packages from ${manifest} are already installed"
     return
   }
-  apt_refresh_once
-  run sudo apt-get install -y "${missing[@]}"
+  apt_refresh_once || return
+  run sudo apt-get install -y "${missing[@]}" || return
 }
 
 read_snap_manifest() {
@@ -82,9 +82,9 @@ snap_install_manifest() {
     if [[ "$DRY_RUN" != "true" ]] && snap list "$package" >/dev/null 2>&1; then
       e_note "Snap ${package} is already installed"
     elif [[ -n "$confinement" ]]; then
-      run sudo snap install "$package" "$confinement"
+      run sudo snap install "$package" "$confinement" || return
     else
-      run sudo snap install "$package"
+      run sudo snap install "$package" || return
     fi
     index=$((index + 1))
   done

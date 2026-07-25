@@ -34,6 +34,19 @@ contains_forbidden_scope() {
     "$@"
 }
 
+list_shipped_root_directories() {
+  local root="$1"
+  find "$root" -mindepth 1 -maxdepth 1 -type d \
+    ! -name .git ! -name .superpowers ! -name docs -exec basename {} \; | sort
+}
+
+find_shipped_bash_scripts() {
+  local root="$1"
+  find "$root" \
+    \( -path "$root/.git" -o -path "$root/.superpowers" -o -path "$root/docs" \) -prune -o \
+    -type f -name '*.sh' -print0
+}
+
 test_forbidden_scope_term_boundaries() {
   local author_reference="$TEST_ROOT/allowed-author-reference"
   local forbidden_reference="$TEST_ROOT/forbidden-purpose-reference"
@@ -53,6 +66,38 @@ test_forbidden_scope_term_boundaries() {
     fail "Kali-lab scope was accepted"
   fi
   pass "forbidden scope detects standalone and Kali-lab terms without author-name collisions"
+}
+
+test_shipped_root_directories_ignore_optional_design_roots() {
+  local fixture_root="$TEST_ROOT/shipped-root-directories"
+  local expected=$'platforms\nshared\ntests'
+
+  mkdir -p "$fixture_root/platforms" "$fixture_root/shared" "$fixture_root/tests"
+  assert_equals "$expected" "$(list_shipped_root_directories "$fixture_root")" \
+    "shipped roots without optional design directories"
+
+  mkdir -p "$fixture_root/.git" "$fixture_root/.superpowers" "$fixture_root/docs/superpowers"
+  assert_equals "$expected" "$(list_shipped_root_directories "$fixture_root")" \
+    "shipped roots with optional design directories"
+  pass "ignored design roots are optional outside the shipped structure"
+}
+
+test_shipped_bash_discovery_ignores_design_artifacts() {
+  local fixture_root="$TEST_ROOT/shipped-bash-discovery" discovered="" script
+
+  mkdir -p "$fixture_root/.git" "$fixture_root/.superpowers" \
+    "$fixture_root/docs/superpowers" "$fixture_root/shared"
+  printf '%s\n' '#!/bin/bash' > "$fixture_root/.git/ignored.sh"
+  printf '%s\n' 'not valid Bash (' > "$fixture_root/.superpowers/ignored.sh"
+  printf '%s\n' 'not valid Bash (' > "$fixture_root/docs/superpowers/ignored.sh"
+  printf '%s\n' '#!/bin/bash' > "$fixture_root/shared/valid.sh"
+
+  while IFS= read -r -d '' script; do
+    discovered="${discovered}${discovered:+$'\n'}${script}"
+  done < <(find_shipped_bash_scripts "$fixture_root")
+  assert_equals "$fixture_root/shared/valid.sh" "$discovered" \
+    "shipped Bash discovery"
+  pass "shipped Bash discovery prunes ignored design artifacts"
 }
 
 test_final_repository_structure_and_scope() {
@@ -81,11 +126,8 @@ test_final_repository_structure_and_scope() {
   actual_root_files="$(find "$REPO_DIR" -mindepth 1 -maxdepth 1 -type f -exec basename {} \; | sort)"
   assert_equals "$expected_root_files" "$actual_root_files" "root file ownership"
 
-  expected_root_directories=$'docs\nplatforms\nshared\ntests'
-  actual_root_directories="$(
-    find "$REPO_DIR" -mindepth 1 -maxdepth 1 -type d \
-      ! -name .git ! -name .superpowers -exec basename {} \; | sort
-  )"
+  expected_root_directories=$'platforms\nshared\ntests'
+  actual_root_directories="$(list_shipped_root_directories "$REPO_DIR")"
   assert_equals "$expected_root_directories" "$actual_root_directories" "root directory ownership"
 
   for path in "${required_paths[@]}"; do
@@ -137,7 +179,7 @@ test_bash_syntax() {
 
   while IFS= read -r -d '' script; do
     bash -n "$script"
-  done < <(find "$REPO_DIR" -type f -name '*.sh' -not -path '*/.git/*' -print0)
+  done < <(find_shipped_bash_scripts "$REPO_DIR")
   pass "all Bash scripts parse"
 
   if command -v zsh >/dev/null 2>&1; then
@@ -1121,6 +1163,8 @@ test_git_prompts_only_for_missing_identity() {
 }
 
 test_forbidden_scope_term_boundaries
+test_shipped_root_directories_ignore_optional_design_roots
+test_shipped_bash_discovery_ignores_design_artifacts
 test_final_repository_structure_and_scope
 test_bash_syntax
 test_platform_detection

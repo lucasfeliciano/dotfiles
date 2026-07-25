@@ -12,6 +12,6 @@ while IFS= read -r -d '' script; do
   shellcheck -x -s bash "$script"
 done < <(
   find "$REPO_DIR" \
-    \( -path "$REPO_DIR/.git" -o -path "$REPO_DIR/.superpowers" -o -path "$REPO_DIR/docs/superpowers" \) -prune -o \
+    \( -path "$REPO_DIR/.git" -o -path "$REPO_DIR/.superpowers" -o -path "$REPO_DIR/docs" \) -prune -o \
     -type f -name '*.sh' -print0
 )

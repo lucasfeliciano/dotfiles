@@ -228,16 +228,30 @@ require_command_or_module() {
   return 1
 }
 
+run_guarded_function() {
+  local function_name="$1" status
+
+  set +e
+  (
+    set -e
+    "$function_name"
+  )
+  status=$?
+  set -e
+  GUARDED_FUNCTION_STATUS="$status"
+}
+
 preflight_resolved_modules() {
   local module_name index preflight_function
   for module_name in "${RESOLVED_MODULES[@]}"; do
     index="$(module_index "$module_name")"
     preflight_function="${REGISTRY_MODULE_PREFLIGHT[$index]}"
     if [[ "$preflight_function" != "none" ]]; then
-      "$preflight_function" || {
+      run_guarded_function "$preflight_function"
+      if ((GUARDED_FUNCTION_STATUS != 0)); then
         error "Preflight failed for module '${module_name}'."
         return 1
-      }
+      fi
     fi
   done
 }
@@ -257,10 +271,11 @@ execute_setup_plan() {
     index="$(module_index "$module_name")"
     setup_function="${REGISTRY_MODULE_SETUP[$index]}"
     e_header "Setting up ${module_name}"
-    "$setup_function" || {
+    run_guarded_function "$setup_function"
+    if ((GUARDED_FUNCTION_STATUS != 0)); then
       error "Module '${module_name}' failed; subsequent modules were not run."
       return 1
-    }
+    fi
     e_success "${module_name} setup done!"
   done
 }

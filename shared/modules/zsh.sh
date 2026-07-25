@@ -5,7 +5,7 @@ preflight_zsh() {
   local command_name
   for command_name in curl git zsh eza; do
     require_command_or_module "$command_name" packages \
-      "run './setup.sh --profile base' or include 'packages' in --module"
+      "run './setup.sh --profile base' or include 'packages' in --module" || return
   done
 }
 

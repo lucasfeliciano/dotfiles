@@ -348,9 +348,11 @@ test_package_scope() {
 
 test_manifest_parsing() {
   local invalid_apt="$TEST_ROOT/invalid.apt" invalid_snap="$TEST_ROOT/invalid.snap"
+  local valid_then_invalid_snap="$TEST_ROOT/valid-then-invalid.snap"
   local marker="$TEST_ROOT/manifest-command-ran" output
   printf 'curl | sh\n' > "$invalid_apt"
   printf 'code --classic unexpected\n' > "$invalid_snap"
+  printf 'code --classic\ncode --classic unexpected\n' > "$valid_then_invalid_snap"
 
   if REPO_DIR="$REPO_DIR" MANIFEST="$invalid_apt" MARKER="$marker" bash -c '
     source "$REPO_DIR/shared/lib/log.sh"
@@ -374,6 +376,17 @@ test_manifest_parsing() {
   fi
   [[ ! -e "$marker" ]] || fail "invalid Snap entry reached command execution"
 
+  if REPO_DIR="$REPO_DIR" MANIFEST="$valid_then_invalid_snap" MARKER="$marker" bash -c '
+    source "$REPO_DIR/shared/lib/log.sh"
+    source "$REPO_DIR/platforms/ubuntu/lib/packages.sh"
+    run() { touch "$MARKER"; }
+    DRY_RUN=true
+    snap_install_manifest "$MANIFEST"
+  ' >/dev/null 2>&1; then
+    fail "mixed Snap manifest acceptance"
+  fi
+  [[ ! -e "$marker" ]] || fail "invalid Snap manifest reached a fake sudo call"
+
   output="$(
     REPO_DIR="$REPO_DIR" bash -c '
       source "$REPO_DIR/shared/lib/log.sh"
@@ -396,7 +409,72 @@ test_manifest_parsing() {
     '
   )"
   [[ "$output" != *"unexpected mutation"* ]] || fail "installed Snap reinstallation"
-  pass "APT and Snap manifests reject command syntax and preserve classic confinement"
+  pass "APT and Snap manifests validate before command execution and preserve classic confinement"
+}
+
+test_failure_propagation() {
+  local marker="$TEST_ROOT/setup-packages-continued" download_marker="$TEST_ROOT/setup-packages-download"
+
+  if REPO_DIR="$REPO_DIR" bash -c '
+    source "$REPO_DIR/shared/lib/log.sh"
+    source "$REPO_DIR/setup.sh"
+    source "$REPO_DIR/shared/modules/zsh.sh"
+    DRY_RUN=false
+    require_command_or_module() { [[ "$1" != "curl" ]]; }
+    preflight_zsh
+  ' >/dev/null 2>&1; then
+    fail "early Zsh prerequisite failure was masked"
+  fi
+
+  if REPO_DIR="$REPO_DIR" bash -c '
+    set -euo pipefail
+    source "$REPO_DIR/shared/lib/log.sh"
+    source "$REPO_DIR/shared/lib/command.sh"
+    source "$REPO_DIR/setup.sh"
+    REGISTRY_MODULE_SETUP=(setup_broken)
+    RESOLVED_MODULES=(broken)
+    module_index() { printf "0\n"; }
+    setup_broken() { run false; printf "continued\n"; }
+    execute_setup_plan
+  ' >/dev/null 2>&1; then
+    fail "mid-module command failure was masked"
+  fi
+
+  if REPO_DIR="$REPO_DIR" MARKER="$marker" bash -c '
+    source "$REPO_DIR/shared/lib/log.sh"
+    source "$REPO_DIR/platforms/ubuntu/modules/packages.sh"
+    apt_install_manifest() { return 1; }
+    snap_install_manifest() { touch "$MARKER"; }
+    command() {
+      if [[ "$1" == "-v" && "$2" == "mise" ]]; then
+        return 0
+      fi
+      builtin command "$@"
+    }
+    setup_packages
+  ' >/dev/null 2>&1; then
+    fail "setup_packages masked an earlier helper failure"
+  fi
+  [[ ! -e "$marker" ]] || fail "setup_packages continued after a helper failure"
+
+  if REPO_DIR="$REPO_DIR" MARKER="$download_marker" bash -c '
+    source "$REPO_DIR/shared/lib/log.sh"
+    source "$REPO_DIR/platforms/ubuntu/modules/packages.sh"
+    apt_install_manifest() { :; }
+    snap_install_manifest() { return 1; }
+    command() {
+      if [[ "$1" == "-v" && "$2" == "mise" ]]; then
+        return 1
+      fi
+      builtin command "$@"
+    }
+    run() { touch "$MARKER"; }
+    setup_packages
+  ' >/dev/null 2>&1; then
+    fail "setup_packages masked a Snap helper failure"
+  fi
+  [[ ! -e "$download_marker" ]] || fail "setup_packages downloaded after a Snap helper failure"
+  pass "preflight and setup failures stop their plans immediately"
 }
 
 test_git_prompts_only_for_missing_identity() {
@@ -431,6 +509,7 @@ test_bootstrap_dry_run
 test_runtime_and_network_policy
 test_package_scope
 test_manifest_parsing
+test_failure_propagation
 test_git_prompts_only_for_missing_identity
 
 printf '1..%d\n' "$pass_count"

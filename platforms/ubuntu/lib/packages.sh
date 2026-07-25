@@ -47,8 +47,10 @@ apt_install_manifest() {
   run sudo apt-get install -y "${missing[@]}"
 }
 
-snap_install_manifest() {
+read_snap_manifest() {
   local manifest="$1" line package confinement extra
+  SNAP_PACKAGES=()
+  SNAP_CONFINEMENTS=()
   while IFS= read -r line || [[ -n "$line" ]]; do
     [[ "$line" =~ ^[[:space:]]*$ ]] && continue
     [[ "$line" =~ ^[[:space:]]*# ]] && continue
@@ -62,6 +64,21 @@ EOF
         error "Invalid Snap manifest entry in ${manifest}: ${line}"
         return 1
       }
+    SNAP_PACKAGES+=("$package")
+    SNAP_CONFINEMENTS+=("$confinement")
+  done < "$manifest"
+  ((${#SNAP_PACKAGES[@]} > 0)) || {
+    error "Snap manifest is empty: ${manifest}"
+    return 1
+  }
+}
+
+snap_install_manifest() {
+  local manifest="$1" package confinement index=0
+  read_snap_manifest "$manifest" || return
+  while ((index < ${#SNAP_PACKAGES[@]})); do
+    package="${SNAP_PACKAGES[$index]}"
+    confinement="${SNAP_CONFINEMENTS[$index]}"
     if [[ "$DRY_RUN" != "true" ]] && snap list "$package" >/dev/null 2>&1; then
       e_note "Snap ${package} is already installed"
     elif [[ -n "$confinement" ]]; then
@@ -69,5 +86,6 @@ EOF
     else
       run sudo snap install "$package"
     fi
-  done < "$manifest"
+    index=$((index + 1))
+  done
 }

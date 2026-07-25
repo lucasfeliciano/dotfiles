@@ -153,34 +153,164 @@ check_output() {
   set -e
 }
 
+repository_snapshot() {
+  find "$REPO_DIR" -path "$REPO_DIR/.git" -prune -o -type f -exec cksum {} \; | sort
+}
+
+prepare_mise_tool_fixture() {
+  local fixture_root="$1" executable
+  mkdir -p \
+    "$fixture_root/control" \
+    "$fixture_root/mise/shims" \
+    "$fixture_root/mise/installs/node/old/bin" \
+    "$fixture_root/mise/installs/node/current/bin"
+  printf '#!/bin/sh\nif [ "$1" = which ] && [ "$2" = node ] && [ -n "${MISE_WHICH_RESULT:-}" ]; then\n  printf "%%s\\n" "$MISE_WHICH_RESULT"\n  exit 0\nfi\nexit 1\n' > "$fixture_root/control/mise"
+  for executable in \
+    "$fixture_root/mise/shims/node" \
+    "$fixture_root/mise/installs/node/old/bin/node" \
+    "$fixture_root/mise/installs/node/current/bin/node"; do
+    printf '#!/bin/sh\nexit 0\n' > "$executable"
+    chmod +x "$executable"
+  done
+  chmod +x "$fixture_root/control/mise"
+}
+
+run_mise_tool_check() {
+  local fixture_root="$1" command_dir="$2" which_result="$3"
+  set +e
+  MISE_TOOL_OUTPUT="$(
+    PATH="$command_dir:$fixture_root/control:$PATH" \
+      MISE_WHICH_RESULT="$which_result" \
+      REPO_DIR="$REPO_DIR" \
+      bash -c '
+        source "$REPO_DIR/shared/lib/log.sh"
+        source "$REPO_DIR/shared/lib/verify.sh"
+        source "$REPO_DIR/shared/modules/mise.sh"
+        verify_mise_tool node
+        verify_finish
+      ' 2>&1
+  )"
+  MISE_TOOL_STATUS=$?
+  set -e
+}
+
+test_mise_tool_rejects_stale_shim() {
+  local fixture_root="$TEST_ROOT/mise-stale-shim"
+  prepare_mise_tool_fixture "$fixture_root"
+
+  run_mise_tool_check "$fixture_root" "$fixture_root/mise/shims" ""
+
+  assert_equals "1" "$MISE_TOOL_STATUS" "stale mise shim status"
+  [[ "$MISE_TOOL_OUTPUT" == *"FAIL: node is not provided by mise"* ]] ||
+    fail "stale mise shim result"
+  pass "mise ownership rejects stale shims"
+}
+
+test_mise_tool_rejects_mismatched_active_install() {
+  local fixture_root="$TEST_ROOT/mise-mismatched-install"
+  prepare_mise_tool_fixture "$fixture_root"
+
+  run_mise_tool_check \
+    "$fixture_root" \
+    "$fixture_root/mise/installs/node/old/bin" \
+    "$fixture_root/mise/installs/node/current/bin/node"
+
+  assert_equals "1" "$MISE_TOOL_STATUS" "mismatched mise install status"
+  [[ "$MISE_TOOL_OUTPUT" == *"FAIL: node is not provided by mise"* ]] ||
+    fail "mismatched mise install result"
+  pass "mise ownership rejects inactive install paths"
+}
+
+test_mise_tool_accepts_active_direct_install_and_shim() {
+  local fixture_root="$TEST_ROOT/mise-active-install"
+  prepare_mise_tool_fixture "$fixture_root"
+
+  run_mise_tool_check \
+    "$fixture_root" \
+    "$fixture_root/mise/installs/node/current/bin" \
+    "$fixture_root/mise/installs/node/current/bin/node"
+  assert_equals "0" "$MISE_TOOL_STATUS" "active direct mise install status"
+  [[ "$MISE_TOOL_OUTPUT" == *"PASS: node is provided by mise"* ]] ||
+    fail "active direct mise install result"
+
+  run_mise_tool_check \
+    "$fixture_root" \
+    "$fixture_root/mise/shims" \
+    "$fixture_root/mise/installs/node/current/bin/node"
+  assert_equals "0" "$MISE_TOOL_STATUS" "active mise shim status"
+  [[ "$MISE_TOOL_OUTPUT" == *"PASS: node is provided by mise"* ]] ||
+    fail "active mise shim result"
+  pass "mise ownership accepts active direct installs and shims"
+}
+
 test_check_mode_selection_and_safety() {
-  local home_dir fake_bin sudo_marker before after output
+  local home_dir fake_bin sudo_marker package_marker system_marker after created_path output repo_before repo_after
   home_dir="$TEST_ROOT/check-home"
   fake_bin="$TEST_ROOT/check-bin"
   sudo_marker="$TEST_ROOT/check-sudo-ran"
+  package_marker="$TEST_ROOT/check-package-mutated"
+  system_marker="$TEST_ROOT/check-system-mutated"
   mkdir -p "$home_dir" "$fake_bin"
   printf '#!/bin/sh\ntouch "$CHECK_SUDO_MARKER"\nexit 99\n' > "$fake_bin/sudo"
-  chmod +x "$fake_bin/sudo"
-  before="$(find "$home_dir" -mindepth 1 -print | sort)"
-  output="$(PATH="$fake_bin:$PATH" CHECK_SUDO_MARKER="$sudo_marker" \
+  printf '#!/bin/sh\ntouch "$CHECK_PACKAGE_MARKER"\nexit 99\n' > "$fake_bin/apt-get"
+  printf '#!/bin/sh\ncase "$1 $2" in\n  "list code") exit 0 ;;\n  "info code") printf "confinement: classic\\n"; exit 0 ;;\n  *) touch "$CHECK_PACKAGE_MARKER"; exit 99 ;;\nesac\n' > "$fake_bin/snap"
+  printf '#!/bin/sh\ncase "$1 $2" in\n  "bundle check") exit 0 ;;\n  *) touch "$CHECK_PACKAGE_MARKER"; exit 99 ;;\nesac\n' > "$fake_bin/brew"
+  printf '#!/bin/sh\ntouch "$CHECK_SYSTEM_MARKER"\nexit 99\n' > "$fake_bin/chsh"
+  printf '#!/bin/sh\ntouch "$CHECK_SYSTEM_MARKER"\nexit 99\n' > "$fake_bin/usermod"
+  printf '#!/bin/sh\ncase "$1" in\n  is-enabled | is-active) exit 1 ;;\n  *) touch "$CHECK_SYSTEM_MARKER"; exit 99 ;;\nesac\n' > "$fake_bin/systemctl"
+  printf '#!/bin/sh\ncase "$3" in\n  net-info | net-dumpxml) exit 1 ;;\n  *) touch "$CHECK_SYSTEM_MARKER"; exit 99 ;;\nesac\n' > "$fake_bin/virsh"
+  chmod +x \
+    "$fake_bin/sudo" "$fake_bin/apt-get" "$fake_bin/snap" "$fake_bin/brew" \
+    "$fake_bin/chsh" "$fake_bin/usermod" "$fake_bin/systemctl" "$fake_bin/virsh"
+  repo_before="$(repository_snapshot)"
+  output="$(PATH="$fake_bin:$PATH" CHECK_SUDO_MARKER="$sudo_marker" CHECK_PACKAGE_MARKER="$package_marker" \
+    CHECK_SYSTEM_MARKER="$system_marker" \
     check_output ubuntu 26.04 "$home_dir" --profile networking)"
-  after="$(find "$home_dir" -mindepth 1 -print | sort)"
-
-  assert_equals "$before" "$after" "check mode filesystem state"
-  [[ ! -e "$sudo_marker" ]] || fail "check mode requested privilege"
   [[ "$output" == *"Checking packages"* ]] || fail "base package check selection"
   [[ "$output" == *"Checking networking"* ]] || fail "networking check selection"
   [[ "$output" != *"N/A: networking has no meaningful automated check"* ]] || \
     fail "networking check implementation"
   [[ "$output" != *"Checking virtualization"* ]] || fail "unselected virtualization check"
 
-  output="$(check_output ubuntu 26.04 "$home_dir" --profile virtualization networking)"
+  output="$(PATH="$fake_bin:$PATH" CHECK_PACKAGE_MARKER="$package_marker" \
+    check_output macos test "$home_dir" --module packages)"
+  [[ "$output" == *"Checking packages"* ]] || fail "macOS package check selection"
+  [[ ! -e "$package_marker" ]] || fail "check mode mutated package state"
+
+  output="$(PATH="$fake_bin:$PATH" CHECK_SUDO_MARKER="$sudo_marker" CHECK_PACKAGE_MARKER="$package_marker" \
+    CHECK_SYSTEM_MARKER="$system_marker" \
+    check_output ubuntu 26.04 "$home_dir" --profile virtualization networking)"
   [[ "$output" == *"Checking networking"* && "$output" == *"Checking virtualization"* ]] || \
     fail "composed profile checks"
   output="$(check_output macos test "$home_dir" --module system)"
   [[ "$output" == *"N/A: system has no meaningful automated check"* ]] || \
     fail "explicit not-applicable system check"
-  pass "check mode uses profile resolution and performs no mutation"
+
+  after="$(find "$home_dir" -mindepth 1 -print | sort)"
+  repo_after="$(repository_snapshot)"
+  while IFS= read -r created_path; do
+    [[ -n "$created_path" ]] || continue
+    case "$created_path" in
+      "$home_dir/.local" | \
+      "$home_dir/.local/share" | \
+      "$home_dir/.local/share/mise" | \
+      "$home_dir/.local/share/mise/migrations" | \
+      "$home_dir/.local/share/mise/migrations/"* | \
+      "$home_dir/.cache" | \
+      "$home_dir/.cache/mise" | \
+      "$home_dir/.cache/mise/"* | \
+      "$home_dir/Library" | \
+      "$home_dir/Library/Caches" | \
+      "$home_dir/Library/Caches/mise" | \
+      "$home_dir/Library/Caches/mise/"*) ;;
+      *) fail "check mode mutated unrelated HOME path: $created_path" ;;
+    esac
+  done <<< "$after"
+  assert_equals "$repo_before" "$repo_after" "check mode repository state"
+  [[ ! -e "$sudo_marker" ]] || fail "check mode requested privilege"
+  [[ ! -e "$package_marker" ]] || fail "check mode mutated package state"
+  [[ ! -e "$system_marker" ]] || fail "check mode mutated system configuration"
+  pass "check mode uses profile resolution and avoids protected mutations"
 }
 
 test_production_helper_ownership() {
@@ -785,6 +915,9 @@ test_bash_syntax
 test_platform_detection
 test_command_rendering_and_failure_status
 test_verify_reporter_status
+test_mise_tool_rejects_mismatched_active_install
+test_mise_tool_rejects_stale_shim
+test_mise_tool_accepts_active_direct_install_and_shim
 test_check_mode_selection_and_safety
 test_production_helper_ownership
 test_module_ordering

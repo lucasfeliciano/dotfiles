@@ -7,11 +7,13 @@ preflight_mise() {
 }
 
 verify_mise_tool() {
-  local tool="$1" shell_path shell_real
+  local tool="$1" shell_path mise_path shell_real mise_real
   shell_path="$(command -v "$tool" 2>/dev/null || true)"
+  mise_path="$(mise which "$tool" 2>/dev/null || true)"
   shell_real="$(realpath "$shell_path" 2>/dev/null || true)"
-  if [[ -n "$shell_path" ]] &&
-    { [[ "$shell_real" == *"/mise/installs/"* ]] || [[ "$shell_path" == *"/mise/shims/"* ]]; }; then
+  mise_real="$(realpath "$mise_path" 2>/dev/null || true)"
+  if [[ -n "$shell_path" ]] && [[ "$mise_real" == *"/mise/installs/"* ]] &&
+    { [[ "$shell_real" == "$mise_real" ]] || [[ "$shell_path" == *"/mise/shims/"* ]]; }; then
     verify_pass "${tool} is provided by mise"
   else
     verify_fail "${tool} is not provided by mise; run './setup.sh --module packages mise'"

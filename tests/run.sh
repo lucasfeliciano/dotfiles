@@ -219,6 +219,10 @@ test_libvirt_policy_inspection() {
       printf "%s\n" \
         "<network><ip address=\"192.168.77.1\"/><ip address=\"192.168.88.1\" netmask=\"255.255.255.0\"/></network>"
     }
+    fake_metadata_isolated() {
+      printf "%s\n" \
+        "<network><ip address=\"192.168.88.1\" netmask=\"255.255.255.0\"/><metadata><ip xmlns=\"urn:example\" address=\"192.168.77.1\" netmask=\"255.255.255.0\"/></metadata></network>"
+    }
     fake_nat() {
       printf "%s\n" "<network><forward mode=\"nat\"/></network>"
     }
@@ -226,13 +230,19 @@ test_libvirt_policy_inspection() {
       printf "%s\n" \
         "<network><forward mode=\"route\"/><metadata mode=\"nat\"/></network>"
     }
+    fake_metadata_nat() {
+      printf "%s\n" \
+        "<network><forward mode=\"route\"/><metadata><forward xmlns=\"urn:example\" mode=\"nat\"/></metadata></network>"
+    }
 
     libvirt_network_matches_isolated_policy vm-isolated fake_isolated
     ! libvirt_network_matches_isolated_policy vm-isolated fake_forwarded
     ! libvirt_network_matches_isolated_policy vm-isolated fake_wrong_subnet
     ! libvirt_network_matches_isolated_policy vm-isolated fake_split_subnet
+    ! libvirt_network_matches_isolated_policy vm-isolated fake_metadata_isolated
     libvirt_network_is_nat default fake_nat
     ! libvirt_network_is_nat default fake_disjoint_nat
+    ! libvirt_network_is_nat default fake_metadata_nat
   ' || fail "libvirt isolated-network policy inspection"
 
   grep -q '<name>vm-isolated</name>' "$REPO_DIR/platforms/ubuntu/config/libvirt/vm-isolated.xml" || fail "neutral network name"

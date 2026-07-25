@@ -44,12 +44,3 @@ e_note() {
 e_dry() {
   printf "\n${blue}[dry-run]${reset} %s\n" "$@"
 }
-
-# Run a command, or print it in dry-run mode.
-run() {
-  if [[ "${DRY_RUN:-false}" == "true" ]]; then
-    e_dry "$*"
-  else
-    "$@"
-  fi
-}

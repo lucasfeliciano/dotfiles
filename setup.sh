@@ -17,9 +17,11 @@ for arg in "$@"; do
   esac
 done
 
-# Source libraries
-source "$DOTFILES_DIR/util/log.sh"
-source "$DOTFILES_DIR/lib/brew.sh"
+# Source shared libraries.
+source "$DOTFILES_DIR/shared/lib/log.sh"
+source "$DOTFILES_DIR/shared/lib/command.sh"
+source "$DOTFILES_DIR/shared/lib/platform.sh"
+source "$DOTFILES_DIR/shared/lib/fs.sh"
 source "$DOTFILES_DIR/lib/zsh.sh"
 source "$DOTFILES_DIR/lib/eza.sh"
 source "$DOTFILES_DIR/lib/git.sh"

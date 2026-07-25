@@ -229,16 +229,14 @@ require_command_or_module() {
 }
 
 run_guarded_function() {
-  local function_name="$1" status
+  local function_name="$1"
 
-  set +e
-  (
-    set -e
-    "$function_name"
-  )
-  status=$?
-  set -e
-  GUARDED_FUNCTION_STATUS="$status"
+  GUARDED_FUNCTION_STATUS=0
+  set -E
+  trap 'GUARDED_FUNCTION_STATUS=$?; return "$GUARDED_FUNCTION_STATUS"' ERR
+  "$function_name"
+  trap - ERR
+  set +E
 }
 
 preflight_resolved_modules() {

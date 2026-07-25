@@ -198,6 +198,22 @@ test_apt_refreshes_once_across_manifests() {
   pass "APT metadata refresh is shared across profile manifests"
 }
 
+test_composed_networking_profile_refreshes_apt_once() {
+  local home_dir output update_count
+
+  home_dir="$TEST_ROOT/networking-refresh-home"
+  mkdir -p "$home_dir"
+  output="$(
+    DOTFILES_PLATFORM_OVERRIDE=ubuntu \
+      DOTFILES_PLATFORM_VERSION_OVERRIDE=26.04 \
+      HOME="$home_dir" \
+      "$REPO_DIR/setup.sh" --dry-run --profile networking
+  )"
+  update_count="$(grep -c 'sudo apt-get update' <<< "$output")"
+  assert_equals "1" "$update_count" "composed networking profile refreshes APT once"
+  pass "composed networking profile shares an APT metadata refresh"
+}
+
 assert_command_fails_with() {
   local expected="$1"
   shift
@@ -574,6 +590,7 @@ test_verify_reporter_status
 test_module_ordering
 test_networking_profile
 test_apt_refreshes_once_across_manifests
+test_composed_networking_profile_refreshes_apt_once
 test_selector_contract
 test_conflict_backup_and_idempotency
 test_private_file_preserved

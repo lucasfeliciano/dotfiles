@@ -102,6 +102,6 @@ libvirt_network_matches_isolated_policy() {
 libvirt_ensure_network_started() {
   local network="$1"
   shift
-  libvirt_network_is_active "$network" "$@" || run "$@" net-start "$network"
-  libvirt_network_autostarts "$network" "$@" || run "$@" net-autostart "$network"
+  libvirt_network_is_active "$network" "$@" || run "$@" net-start "$network" || return
+  libvirt_network_autostarts "$network" "$@" || run "$@" net-autostart "$network" || return
 }

@@ -253,6 +253,49 @@ test_libvirt_policy_inspection() {
   pass "libvirt inspection rejects forwarding and subnet conflicts"
 }
 
+test_virtualization_stops_after_failed_default_start() {
+  local trace_file="$TEST_ROOT/virtualization-failure-trace"
+
+  REPO_DIR="$REPO_DIR" TRACE_FILE="$trace_file" bash -c '
+    set -euo pipefail
+    source "$REPO_DIR/shared/lib/log.sh"
+    source "$REPO_DIR/shared/lib/command.sh"
+    source "$REPO_DIR/setup.sh"
+    source "$REPO_DIR/platforms/ubuntu/lib/libvirt.sh"
+    source "$REPO_DIR/platforms/ubuntu/modules/virtualization.sh"
+
+    DRY_RUN=false
+    DOTFILES_DIR="$REPO_DIR"
+    USER=tester
+    apt_install_manifest() { :; }
+    id() { printf "libvirt kvm\n"; }
+    systemctl() { return 0; }
+    e_note() { printf "note:%s\n" "$1" >> "$TRACE_FILE"; }
+    fake_virsh() {
+      printf "%s\n" "$*" >> "$TRACE_FILE"
+      case "$1 $2" in
+        "net-info default") printf "Active: no\nAutostart: no\n" ;;
+        "net-dumpxml default") printf "%s\n" \
+          "<network><forward mode=\"nat\"/></network>" ;;
+        "net-start default") return 42 ;;
+        "net-info vm-isolated") return 1 ;;
+        *) return 0 ;;
+      esac
+    }
+    LIBVIRT_SYSTEM_VIRSH=(fake_virsh)
+
+    set +e
+    run_guarded_function setup_virtualization
+    set -e
+
+    [[ "$GUARDED_FUNCTION_STATUS" -eq 42 ]]
+    grep -qx "net-start default" "$TRACE_FILE"
+    ! grep -Eq "net-autostart default|vm-isolated|No VM or guest image" "$TRACE_FILE"
+  ' >/dev/null 2>&1 || fail "virtualization stops after failed default network start"
+
+  pass "virtualization stops before later mutations after a failed default network start"
+}
+
 test_apt_refreshes_once_across_manifests() {
   local output update_count
   output="$(
@@ -698,6 +741,7 @@ test_module_ordering
 test_networking_profile
 test_composed_optional_profiles
 test_libvirt_policy_inspection
+test_virtualization_stops_after_failed_default_start
 test_apt_refreshes_once_across_manifests
 test_composed_networking_profile_refreshes_apt_once
 test_guarded_function_restores_err_context

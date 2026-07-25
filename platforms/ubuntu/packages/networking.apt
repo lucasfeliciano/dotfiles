@@ -1,0 +1,8 @@
+iproute2
+iputils-ping
+dnsutils
+netcat-openbsd
+tcpdump
+traceroute
+mtr-tiny
+whois

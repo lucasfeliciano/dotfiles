@@ -160,6 +160,44 @@ test_module_ordering() {
   pass "base profiles and direct modules use canonical order"
 }
 
+test_networking_profile() {
+  local base_order networking_order
+  base_order="$(module_order ubuntu 26.04 "$TEST_ROOT/network-home")"
+  networking_order="$(module_order ubuntu 26.04 "$TEST_ROOT/network-home" --profile networking)"
+
+  assert_equals "packages zsh eza mise ghostty git" "$base_order" "Ubuntu base excludes networking"
+  assert_equals "packages zsh eza mise ghostty git networking" "$networking_order" "networking profile composition"
+
+  local expected='iproute2
+iputils-ping
+dnsutils
+netcat-openbsd
+tcpdump
+traceroute
+mtr-tiny
+whois'
+  assert_equals "$expected" "$(sed '/^[[:space:]]*#/d; /^[[:space:]]*$/d' "$REPO_DIR/platforms/ubuntu/packages/networking.apt")" \
+    "networking manifest inventory"
+  pass "networking is additive and owns all diagnostics"
+}
+
+test_apt_refreshes_once_across_manifests() {
+  local output update_count
+  output="$(
+    REPO_DIR="$REPO_DIR" bash -c '
+      source "$REPO_DIR/shared/lib/log.sh"
+      source "$REPO_DIR/platforms/ubuntu/lib/packages.sh"
+      DRY_RUN=true
+      run() { printf "%s\\n" "$*"; }
+      apt_install_manifest "$REPO_DIR/platforms/ubuntu/packages/base.apt"
+      apt_install_manifest "$REPO_DIR/platforms/ubuntu/packages/networking.apt"
+    '
+  )"
+  update_count="$(grep -c '^sudo apt-get update$' <<< "$output")"
+  assert_equals "1" "$update_count" "single APT metadata refresh"
+  pass "APT metadata refresh is shared across profile manifests"
+}
+
 assert_command_fails_with() {
   local expected="$1"
   shift
@@ -534,6 +572,8 @@ test_platform_detection
 test_command_rendering_and_failure_status
 test_verify_reporter_status
 test_module_ordering
+test_networking_profile
+test_apt_refreshes_once_across_manifests
 test_selector_contract
 test_conflict_backup_and_idempotency
 test_private_file_preserved

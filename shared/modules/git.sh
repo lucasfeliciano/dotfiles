@@ -2,21 +2,18 @@
 # Sourced by setup.sh — do not execute directly.
 
 check_git() {
-  local value
+  local name email use_config_only value
   verify_command git "run './setup.sh --module packages git'"
 
-  value="$(git config --global --get user.name 2>/dev/null || true)"
-  if [[ -n "$value" ]]; then
-    verify_pass "Git user.name is configured"
+  name="$(git config --global --get user.name 2>/dev/null || true)"
+  email="$(git config --global --get user.email 2>/dev/null || true)"
+  use_config_only="$(git config --global --get user.useConfigOnly 2>/dev/null || true)"
+  if [[ -n "$name" && -n "$email" ]]; then
+    verify_pass "Git commit identity is configured"
+  elif [[ "$use_config_only" == "true" ]]; then
+    verify_pass "Git identity guessing is disabled"
   else
-    verify_fail "Git user.name is missing; run './setup.sh --module git'"
-  fi
-
-  value="$(git config --global --get user.email 2>/dev/null || true)"
-  if [[ -n "$value" ]]; then
-    verify_pass "Git user.email is configured"
-  else
-    verify_fail "Git user.email is missing; run './setup.sh --module git'"
+    verify_fail "Git commit identity is incomplete and user.useConfigOnly is not true; run './setup.sh --module git'"
   fi
 
   value="$(git config --global --get pull.rebase 2>/dev/null || true)"

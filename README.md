@@ -88,6 +88,26 @@ Dry-run renders quoted command arguments and planned file operations without cha
 
 After setup changes the login shell or group membership, log out and back in. A reboot applies both changes as well.
 
+## Git identity
+
+On both macOS and Ubuntu, Git setup asks whether to configure a global commit
+identity when `user.name` or `user.email` is missing. Accepting prompts only for
+the missing values. Declining sets `user.useConfigOnly=true`, which prevents Git
+from guessing an identity from the local account and hostname and records the
+choice for future setup runs.
+
+Existing identity values are never removed. To revisit an opt-out while the
+identity is incomplete, run:
+
+```sh
+git config --global --unset user.useConfigOnly
+./setup.sh --module git
+```
+
+Git identity is commit metadata, not authentication. This setup does not
+configure Git credentials, remotes, or SSH keys. Both identity choices retain
+the managed `pull.rebase=true` default and pass check mode.
+
 ## Check mode
 
 Check mode resolves the same base, optional-profile, or direct-module selection as setup, then performs read-only verification. It does not request privilege, install packages, alter configuration, or repair failed checks. A failed check exits nonzero and prints the setup action that can remediate it.

@@ -1528,6 +1528,54 @@ test_git_persists_opt_out_and_prompts_only_for_missing_values() {
   pass "Git setup persists opt-out and prompts only for missing identity values"
 }
 
+run_git_check() {
+  local home_dir="$1"
+  HOME="$home_dir" REPO_DIR="$REPO_DIR" bash -c '
+    source "$REPO_DIR/shared/lib/log.sh"
+    source "$REPO_DIR/shared/lib/verify.sh"
+    source "$REPO_DIR/shared/modules/git.sh"
+    check_git
+    verify_finish
+  ' 2>&1
+}
+
+test_git_check_accepts_identity_or_explicit_opt_out() {
+  local identity_home="$TEST_ROOT/git-check-identity-home"
+  local opt_out_home="$TEST_ROOT/git-check-opt-out-home"
+  local invalid_home="$TEST_ROOT/git-check-invalid-home"
+  local output status home_dir
+  mkdir -p "$identity_home" "$opt_out_home" "$invalid_home"
+
+  for home_dir in "$identity_home" "$opt_out_home" "$invalid_home"; do
+    HOME="$home_dir" git config --global pull.rebase true
+  done
+  HOME="$identity_home" git config --global user.name "Configured Name"
+  HOME="$identity_home" git config --global user.email "configured@example.com"
+  HOME="$opt_out_home" git config --global user.useConfigOnly true
+  HOME="$invalid_home" git config --global user.name "Incomplete Name"
+
+  output="$(run_git_check "$identity_home")"
+  [[ "$output" == *"PASS: Git commit identity is configured"* ]] ||
+    fail "complete Git identity check"
+
+  set +e
+  output="$(run_git_check "$opt_out_home")"
+  status=$?
+  set -e
+  assert_equals "0" "$status" "Git identity opt-out check status"
+  [[ "$output" == *"PASS: Git identity guessing is disabled"* ]] ||
+    fail "Git identity opt-out check"
+
+  set +e
+  output="$(run_git_check "$invalid_home")"
+  status=$?
+  set -e
+  assert_equals "1" "$status" "incomplete Git identity check status"
+  [[ "$output" == *"FAIL: Git commit identity is incomplete and user.useConfigOnly is not true"* ]] ||
+    fail "incomplete Git identity check guidance"
+  pass "Git check accepts complete identity or explicit opt-out"
+}
+
 test_forbidden_scope_term_boundaries
 test_shipped_root_directories_ignore_optional_design_roots
 test_shipped_bash_discovery_ignores_design_artifacts
@@ -1565,5 +1613,6 @@ test_manifest_parsing
 test_failure_propagation
 test_git_offers_optional_identity_choice
 test_git_persists_opt_out_and_prompts_only_for_missing_values
+test_git_check_accepts_identity_or_explicit_opt_out
 
 printf '1..%d\n' "$pass_count"

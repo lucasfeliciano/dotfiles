@@ -76,6 +76,68 @@ test_platform_detection() {
   pass "platform detection accepts Ubuntu 26.04 amd64 and rejects other profiles"
 }
 
+main_detection() {
+  REPO_DIR="$REPO_DIR" bash -c '
+    set -e
+    source "$REPO_DIR/shared/lib/log.sh"
+    source "$REPO_DIR/shared/lib/platform.sh"
+    detect_platform
+    printf "%s %s\\n" "$PLATFORM" "$PLATFORM_VERSION"
+  '
+}
+
+bootstrap_detection() {
+  REPO_DIR="$REPO_DIR" bash -c '
+    source "$REPO_DIR/bootstrap.sh"
+    bootstrap_detect_platform
+  '
+}
+
+assert_detection_case() {
+  local name="$1" kernel="$2" os_id="$3" version="$4" arch="$5" expected_status="$6"
+  local release_file="$TEST_ROOT/os-release-${name}" main_output bootstrap_output main_status bootstrap_status
+  printf 'ID=%s\nVERSION_ID="%s"\n' "$os_id" "$version" > "$release_file"
+
+  set +e
+  main_output="$(
+    DOTFILES_KERNEL_OVERRIDE="$kernel" DOTFILES_ARCH_OVERRIDE="$arch" \
+      DOTFILES_OS_RELEASE_FILE="$release_file" main_detection 2>/dev/null
+  )"
+  main_status=$?
+  bootstrap_output="$(
+    DOTFILES_KERNEL_OVERRIDE="$kernel" DOTFILES_ARCH_OVERRIDE="$arch" \
+      DOTFILES_OS_RELEASE_FILE="$release_file" bootstrap_detection 2>/dev/null
+  )"
+  bootstrap_status=$?
+  set -e
+
+  assert_equals "$expected_status" "$main_status" "${name} main detector status"
+  assert_equals "$expected_status" "$bootstrap_status" "${name} bootstrap detector status"
+  if [[ "$expected_status" == "0" ]]; then
+    if [[ "$kernel" == "Darwin" ]]; then
+      assert_equals "macos" "${main_output%% *}" "${name} main platform"
+      assert_equals "macos" "$bootstrap_output" "${name} bootstrap platform"
+    else
+      assert_equals "ubuntu 26.04" "$main_output" "${name} main platform"
+      assert_equals "ubuntu" "$bootstrap_output" "${name} bootstrap platform"
+    fi
+  fi
+}
+
+test_bootstrap_detector_parity() {
+  local fake_bin="$TEST_ROOT/detector-bin"
+  mkdir -p "$fake_bin"
+  printf '#!/bin/sh\nprintf "15.0\\n"\n' > "$fake_bin/sw_vers"
+  chmod +x "$fake_bin/sw_vers"
+
+  PATH="$fake_bin:$PATH" assert_detection_case ubuntu-supported Linux ubuntu 26.04 x86_64 0
+  PATH="$fake_bin:$PATH" assert_detection_case ubuntu-old Linux ubuntu 24.04 x86_64 1
+  PATH="$fake_bin:$PATH" assert_detection_case debian Linux debian 26.04 x86_64 1
+  PATH="$fake_bin:$PATH" assert_detection_case ubuntu-arm Linux ubuntu 26.04 aarch64 1
+  PATH="$fake_bin:$PATH" assert_detection_case macos Darwin ignored ignored ignored 0
+  pass "bootstrap and setup detectors accept the same supported platforms"
+}
+
 test_command_rendering_and_failure_status() {
   local rendered output status
 
@@ -677,19 +739,42 @@ test_dry_run_has_no_side_effects() {
 }
 
 test_bootstrap_dry_run() {
-  local bootstrap_home output
+  local bootstrap_home fake_bin output
 
   bootstrap_home="$TEST_ROOT/bootstrap-home"
-  mkdir -p "$bootstrap_home"
+  fake_bin="$TEST_ROOT/bootstrap-dry-run-bin"
+  mkdir -p "$bootstrap_home" "$fake_bin"
+  printf '#!/bin/sh\nexit 0\n' > "$fake_bin/xcode-select"
+  chmod +x "$fake_bin/xcode-select"
   output="$(
     HOME="$bootstrap_home" \
+      DOTFILES_KERNEL_OVERRIDE=Darwin \
       DOTFILES_DIR="$bootstrap_home/.dotfiles" \
+      PATH="$fake_bin:$PATH" \
       "$REPO_DIR/bootstrap.sh" --dry-run
   )"
 
   [[ "$output" == *"git clone"* ]] || fail "bootstrap dry-run clone plan"
   [[ ! -e "$bootstrap_home/.dotfiles" ]] || fail "bootstrap dry-run created checkout"
   pass "bootstrap dry-run is side-effect-free before cloning"
+}
+
+test_bootstrap_forwards_argv() {
+  local checkout="$TEST_ROOT/bootstrap-checkout" fake_bin="$TEST_ROOT/bootstrap-bin"
+  local argv_file="$TEST_ROOT/bootstrap-argv"
+  mkdir -p "$checkout/.git" "$fake_bin"
+  printf '#!/bin/sh\nexit 0\n' > "$fake_bin/xcode-select"
+  chmod +x "$fake_bin/xcode-select"
+  printf '#!/bin/bash\nprintf "%%s\\n" "$@" > "$BOOTSTRAP_ARGV_FILE"\n' > "$checkout/setup.sh"
+  chmod +x "$checkout/setup.sh"
+
+  DOTFILES_KERNEL_OVERRIDE=Darwin DOTFILES_DIR="$checkout" BOOTSTRAP_ARGV_FILE="$argv_file" \
+    PATH="$fake_bin:$PATH" "$REPO_DIR/bootstrap.sh" \
+    --check --profile virtualization networking >/dev/null
+
+  assert_equals $'--check\n--profile\nvirtualization\nnetworking' "$(sed -n '1,4p' "$argv_file")" \
+    "bootstrap argv forwarding"
+  pass "bootstrap forwards setup selectors unchanged"
 }
 
 test_runtime_and_network_policy() {
@@ -913,6 +998,7 @@ test_git_prompts_only_for_missing_identity() {
 
 test_bash_syntax
 test_platform_detection
+test_bootstrap_detector_parity
 test_command_rendering_and_failure_status
 test_verify_reporter_status
 test_mise_tool_rejects_mismatched_active_install
@@ -933,6 +1019,7 @@ test_conflict_backup_and_idempotency
 test_private_file_preserved
 test_dry_run_has_no_side_effects
 test_bootstrap_dry_run
+test_bootstrap_forwards_argv
 test_runtime_and_network_policy
 test_package_scope
 test_manifest_parsing

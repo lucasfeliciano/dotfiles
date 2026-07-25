@@ -1,94 +1,118 @@
 # dotfiles
 
-Making it easy to set up a new machine with a consistent shell, tools, and terminal.
+Consistent development-shell configuration composed from shared capabilities and platform-specific profiles.
 
-## What comes with setup?
+## Supported platforms
 
-1. [Homebrew & Cask](https://brew.sh)
-2. [Oh My Zsh](https://ohmyz.sh)
-   1. [Powerlevel10k](https://github.com/romkatv/powerlevel10k) zsh theme
-   2. [zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting) plugin
-   3. [zsh-history-substring-search](https://github.com/zsh-users/zsh-history-substring-search) plugin
-   4. [zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions) plugin
-   5. [zsh-eza](https://github.com/z-shell/zsh-eza) plugin
-3. [eza](https://github.com/eza-community/eza) (with Catppuccin Latte color theme)
-4. [mise](https://mise.jdx.dev) (with Node LTS and pnpm as defaults)
-5. [Ghostty](https://ghostty.org) (with built-in Catppuccin Latte theme)
-6. Git configuration
-   1. Prompt global user name
-   2. Prompt global email
-   3. Set pull strategy to rebase as default
+| Platform | Supported target | Base profile |
+| --- | --- | --- |
+| macOS | Current macOS on the existing Intel/Apple Silicon Homebrew paths | `packages zsh eza mise ghostty git system` |
+| Ubuntu | Ubuntu 26.04 amd64 only | `packages zsh eza mise ghostty git` |
 
-## Installation
+## Quick start
 
-> **WARNING:**
->
-> **This project was created to be used in a machine with zero configuration.**\
-> **No backups are made. Use at your own risk.**
-
-On a fresh machine, run the following command. It will install Xcode CLT, clone this repo, and run the full setup:
+On a new machine, run the bootstrap:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/lucasfeliciano/dotfiles/main/bootstrap.sh | bash
 ```
 
-If you've already cloned the repo, run the setup directly:
+From an existing checkout, run:
 
 ```sh
 ./setup.sh
 ```
 
-### Selective module execution
+The bootstrap installs only the prerequisites needed to clone the repository and hand off to setup. Review a dry-run before applying optional profiles.
 
-Run only specific modules by passing their names:
+## Profiles and modules
+
+A module is one focused operation. A profile is an ordered, complete-machine composition of modules.
+
+| Platform | Profile | Membership |
+| --- | --- | --- |
+| macOS | `base` | `packages zsh eza mise ghostty git system` |
+| Ubuntu | `base` | `packages zsh eza mise ghostty git` |
+| Ubuntu | `networking` | `networking`, composed after `base` |
+| Ubuntu | `virtualization` | `virtualization`, composed after `base` |
+
+Optional profiles always include `base`. Multiple optional profiles form a deduplicated union in canonical module order. Direct module selection adds no dependencies; include every prerequisite module you need.
+
+## Command reference
+
+These are the supported command forms:
 
 ```sh
-./setup.sh brew git       # Run only brew and git setup
-./setup.sh zsh             # Run only zsh setup
+./setup.sh
+./setup.sh --profile networking
+./setup.sh --profile virtualization
+./setup.sh --profile virtualization networking
+./setup.sh --module mise ghostty
+./setup.sh --dry-run --profile virtualization
+./setup.sh --check
+./setup.sh --check --profile networking
+./setup.sh --check --profile virtualization networking
 ```
 
-Available modules: `brew`, `zsh`, `eza`, `mise`, `ghostty`, `git`
+`--profile` and `--module` are mutually exclusive. Positional modules are unsupported.
 
-### Configuration files
+## Managed configuration
 
-Configuration files are added to the right places with symbolic links. This keeps track of your environment changes so you can easily commit them.
+| Repository file | Destination |
+| --- | --- |
+| `shared/config/zsh/.zshrc` | `~/.zshrc` |
+| `shared/config/zsh/.p10k.zsh` | `~/.p10k.zsh` |
+| `shared/config/zsh/.aliases` | `~/.aliases` |
+| `platforms/<platform>/config/zsh/platform.zsh` | `~/.config/zsh/platform.zsh` |
+| `shared/config/eza/theme.yml` | `~/.config/eza/theme.yml` |
+| `shared/config/ghostty/config` | `~/.config/ghostty/config` |
+| `platforms/<platform>/config/ghostty.conf` | `~/.config/ghostty/platform` |
+| `shared/config/mise/config.toml` | `~/.config/mise/config.toml` |
+| `shared/config/uv/uv.toml` | `~/.config/uv/uv.toml` |
 
-#### Symbolic links
+Managed configuration is linked from the checkout so repository changes remain visible at their destinations.
 
-| File                      | Symbolic Link Location         | Description                       |
-| ------------------------- | ------------------------------ | --------------------------------- |
-| config/zsh/.zshrc         | ~/.zshrc                       | Main Zsh configuration file       |
-| config/zsh/.p10k.zsh      | ~/.p10k.zsh                    | Powerlevel10k theme configuration |
-| config/zsh/.aliases       | ~/.aliases                     | Custom terminal command shortcuts |
-| config/ghostty/config     | ~/.config/ghostty/config       | Ghostty terminal configuration    |
-| config/eza/theme.yml      | ~/.config/eza/theme.yml        | eza color theme (Catppuccin Latte)|
-| config/mise/config.toml   | ~/.config/mise/config.toml     | mise runtime manager configuration|
+## Backups, reruns, and dry-run
 
-> `~/.zshrc_private` is copied from `config/zsh/.zshrc_private.template` on first run and kept local (not symlinked, not tracked).
+A correct managed symlink is left untouched. If a destination is an unmanaged file, directory, or different symlink, setup moves it under one run-specific timestamped tree while preserving its home-relative path:
 
-### Repository structure
-
+```text
+~/.dotfiles-backup/20260725-143015-12345/.config/eza/theme.yml
 ```
-dotfiles/
-├── bootstrap.sh          # Fresh machine entry point (curl-able)
-├── setup.sh              # Main entry point: ./setup.sh [module...]
-├── Brewfile              # Homebrew dependencies
-├── util/
-│   └── log.sh            # Logging and formatting helpers
-├── lib/
-│   ├── brew.sh           # setup_brew()
-│   ├── zsh.sh            # setup_zsh()
-│   ├── eza.sh            # setup_eza()
-│   ├── git.sh            # setup_git()
-│   ├── ghostty.sh        # setup_ghostty()
-│   └── mise.sh           # setup_mise()
-└── config/
-    ├── eza/               # eza color theme (Catppuccin Latte)
-    ├── ghostty/           # Ghostty terminal config
-    ├── mise/              # mise runtime manager config
-    └── zsh/               # Zsh dotfiles (.zshrc, .aliases, etc.)
+
+This backup-tree behavior makes reruns safe and idempotent without silently destroying local configuration.
+
+`~/.zshrc_private` is different: setup copies the template only when the file is absent. It remains an untracked local regular file and is never replaced on reruns.
+
+Dry-run renders quoted command arguments and planned file operations without changing the home directory, repository, privileged state, or network resources.
+
+After setup changes the login shell or group membership, log out and back in. A reboot applies both changes as well.
+
+## Check mode
+
+Check mode resolves the same base, optional-profile, or direct-module selection as setup, then performs read-only verification. It does not request privilege, install packages, alter configuration, or repair failed checks. A failed check exits nonzero and prints the setup action that can remediate it.
+
+## Runtime ownership
+
+Mise owns the global user-level executables for Node LTS, stable Python, pnpm, and uv on both platforms. Shell activation places mise's Python ahead of the operating-system Python without replacing or linking over it.
+
+Uv owns Python project environments and dependencies:
+
+- `uv sync` creates and updates `.venv`.
+- `uv.lock`, `uv run`, and `uvx` remain uv responsibilities.
+- Uv prefers external interpreters, so it selects a compatible mise Python first.
+- When a project's `.python-version` or `requires-python` needs another version, uv may download that version for the project.
+- A project-specific downloaded runtime is not promoted to the shell's global Python.
+
+The global uv policy is:
+
+```toml
+python-preference = "system"
+python-downloads = "automatic"
 ```
+
+Mise enables idiomatic version-file handling for Node only. It does not auto-install Python from `.python-version`, which keeps mise and uv from competing for project-specific Python versions. Do not run `uv python install --default`, because it can create global `python` and `python3` aliases outside this ownership boundary.
 
 ---
 
-Inspired by [phoinixi/dotfiles](https://github.com/phoinixi/dotfiles)
+Inspired by [phoinixi/dotfiles](https://github.com/phoinixi/dotfiles).

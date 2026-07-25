@@ -28,6 +28,110 @@ assert_equals() {
   }
 }
 
+contains_forbidden_scope() {
+  grep -Eirq \
+    '(^|[^[:alnum:]_])kali(-lab)?([^[:alnum:]_]|$)|metasploit|lab-isolated|baseline snapshot|guest-agent|guest agent|usb passthrough|shared host director|ufw|unattended-upgrades|apt(-get)?[[:space:]]+upgrade|mokutil|cryptsetup|secure boot|full-disk encryption|packages\.microsoft\.com|vscode\.sources|packages\.microsoft\.gpg' \
+    "$@"
+}
+
+test_forbidden_scope_term_boundaries() {
+  local author_reference="$TEST_ROOT/allowed-author-reference"
+  local forbidden_reference="$TEST_ROOT/forbidden-purpose-reference"
+  local forbidden_lab_reference="$TEST_ROOT/forbidden-lab-reference"
+
+  printf '%s\n' 'https://github.com/ekalinin/nodeenv' > "$author_reference"
+  printf '%s\n' 'Install Kali tooling' > "$forbidden_reference"
+  printf '%s\n' 'Prepare a Kali-lab' > "$forbidden_lab_reference"
+
+  if contains_forbidden_scope "$author_reference"; then
+    fail "author name containing kali was rejected"
+  fi
+  if ! contains_forbidden_scope "$forbidden_reference"; then
+    fail "standalone Kali scope was accepted"
+  fi
+  if ! contains_forbidden_scope "$forbidden_lab_reference"; then
+    fail "Kali-lab scope was accepted"
+  fi
+  pass "forbidden scope detects standalone and Kali-lab terms without author-name collisions"
+}
+
+test_final_repository_structure_and_scope() {
+  local expected_root_files actual_root_files expected_root_directories actual_root_directories
+  local path source_path platform resolved_path
+  local -a required_paths=(
+    bootstrap.sh setup.sh README.md
+    shared/lib/log.sh shared/lib/command.sh shared/lib/fs.sh shared/lib/platform.sh shared/lib/verify.sh
+    shared/modules/zsh.sh shared/modules/eza.sh shared/modules/git.sh shared/modules/mise.sh shared/modules/ghostty.sh
+    shared/config/zsh/.zshrc shared/config/eza/theme.yml shared/config/mise/config.toml
+    shared/config/uv/uv.toml shared/config/ghostty/config
+    platforms/macos/adapter.sh platforms/macos/registry.sh platforms/macos/profiles/base.sh
+    platforms/macos/modules/packages.sh platforms/macos/modules/system.sh platforms/macos/packages/Brewfile
+    platforms/macos/config/zsh/platform.zsh platforms/macos/config/ghostty.conf
+    platforms/ubuntu/adapter.sh platforms/ubuntu/registry.sh platforms/ubuntu/README.md
+    platforms/ubuntu/profiles/base.sh platforms/ubuntu/profiles/networking.sh platforms/ubuntu/profiles/virtualization.sh
+    platforms/ubuntu/modules/packages.sh platforms/ubuntu/modules/networking.sh platforms/ubuntu/modules/virtualization.sh
+    platforms/ubuntu/lib/packages.sh platforms/ubuntu/lib/libvirt.sh
+    platforms/ubuntu/packages/base.apt platforms/ubuntu/packages/base.snap
+    platforms/ubuntu/packages/networking.apt platforms/ubuntu/packages/virtualization.apt
+    platforms/ubuntu/config/zsh/platform.zsh platforms/ubuntu/config/ghostty.conf
+    platforms/ubuntu/config/libvirt/vm-isolated.xml tests/run.sh tests/lint.sh
+  )
+
+  expected_root_files=$'.gitignore\nLICENSE\nREADME.md\nbootstrap.sh\nsetup.sh'
+  actual_root_files="$(find "$REPO_DIR" -mindepth 1 -maxdepth 1 -type f -exec basename {} \; | sort)"
+  assert_equals "$expected_root_files" "$actual_root_files" "root file ownership"
+
+  expected_root_directories=$'docs\nplatforms\nshared\ntests'
+  actual_root_directories="$(
+    find "$REPO_DIR" -mindepth 1 -maxdepth 1 -type d \
+      ! -name .git ! -name .superpowers -exec basename {} \; | sort
+  )"
+  assert_equals "$expected_root_directories" "$actual_root_directories" "root directory ownership"
+
+  for path in "${required_paths[@]}"; do
+    [[ -f "$REPO_DIR/$path" ]] || fail "required final path: $path"
+  done
+  for path in \
+    lib util config packages scripts docs/ubuntu-lab.md \
+    platforms/ubuntu/modules/security.sh platforms/ubuntu/modules/vscode.sh; do
+    [[ ! -e "$REPO_DIR/$path" ]] || fail "legacy path remains: $path"
+  done
+
+  while IFS= read -r source_path; do
+    source_path="${source_path#source \"\$DOTFILES_DIR/}"
+    source_path="${source_path%\"}"
+    if [[ "$source_path" == *'${PLATFORM}'* ]]; then
+      for platform in macos ubuntu; do
+        resolved_path="${source_path//'${PLATFORM}'/$platform}"
+        [[ -f "$REPO_DIR/$resolved_path" ]] || fail "sourced production path exists: $resolved_path"
+      done
+      continue
+    fi
+    [[ -f "$REPO_DIR/$source_path" ]] || fail "sourced production path exists: $source_path"
+  done < <(
+    grep -Eho 'source "\$DOTFILES_DIR/[^${][^"]*"' \
+      "$REPO_DIR/bootstrap.sh" "$REPO_DIR/setup.sh" \
+      "$REPO_DIR/shared"/*.sh "$REPO_DIR/shared/modules"/*.sh \
+      "$REPO_DIR/platforms"/*/*.sh "$REPO_DIR/platforms"/*/*/*.sh 2>/dev/null || true
+  )
+
+  if contains_forbidden_scope \
+    "$REPO_DIR/README.md" "$REPO_DIR/bootstrap.sh" "$REPO_DIR/setup.sh" \
+    "$REPO_DIR/shared" "$REPO_DIR/platforms"; then
+    fail "removed or purpose-specific scope remains"
+  fi
+
+  if grep -Eirn 'macos|ubuntu|apt|snap|brew|libvirt|OSTYPE|/Library|/usr' \
+    "$REPO_DIR/shared/modules" >/dev/null; then
+    fail "platform knowledge remains in shared modules"
+  fi
+  assert_equals "1" "$(grep -R -h '^pass() {' "$REPO_DIR/tests" "$REPO_DIR/shared" "$REPO_DIR/platforms" | wc -l | tr -d ' ')" \
+    "test-only TAP pass helper"
+  assert_equals "1" "$(grep -R -h '^fail() {' "$REPO_DIR/tests" "$REPO_DIR/shared" "$REPO_DIR/platforms" | wc -l | tr -d ' ')" \
+    "test-only TAP fail helper"
+  pass "final paths and generic capability scope are enforced"
+}
+
 test_bash_syntax() {
   local script
 
@@ -1016,6 +1120,8 @@ test_git_prompts_only_for_missing_identity() {
   pass "Git setup prompts only for missing identity values"
 }
 
+test_forbidden_scope_term_boundaries
+test_final_repository_structure_and_scope
 test_bash_syntax
 test_platform_detection
 test_bootstrap_detector_parity

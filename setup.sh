@@ -228,15 +228,35 @@ require_command_or_module() {
   return 1
 }
 
+restore_guarded_function_context() {
+  local err_trap="$1" errtrace_enabled="$2"
+
+  if [[ "$errtrace_enabled" == "true" ]]; then
+    set -E
+  else
+    set +E
+  fi
+  if [[ -n "$err_trap" ]]; then
+    eval "$err_trap"
+  else
+    trap - ERR
+  fi
+}
+
 run_guarded_function() {
-  local function_name="$1"
+  local function_name="$1" previous_err_trap errtrace_enabled
+
+  previous_err_trap="$(trap -p ERR)"
+  case "$-" in
+    *E*) errtrace_enabled=true ;;
+    *) errtrace_enabled=false ;;
+  esac
 
   GUARDED_FUNCTION_STATUS=0
   set -E
-  trap 'GUARDED_FUNCTION_STATUS=$?; return "$GUARDED_FUNCTION_STATUS"' ERR
+  trap 'GUARDED_FUNCTION_STATUS=$?; restore_guarded_function_context "$previous_err_trap" "$errtrace_enabled"; return "$GUARDED_FUNCTION_STATUS"' ERR
   "$function_name"
-  trap - ERR
-  set +E
+  restore_guarded_function_context "$previous_err_trap" "$errtrace_enabled"
 }
 
 preflight_resolved_modules() {

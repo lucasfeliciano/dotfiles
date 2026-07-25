@@ -214,6 +214,41 @@ test_composed_networking_profile_refreshes_apt_once() {
   pass "composed networking profile shares an APT metadata refresh"
 }
 
+test_guarded_function_restores_err_context() {
+  local case_name output case_exit
+
+  for case_name in success ordinary_failure missing_function; do
+    set +e
+    output="$(
+      REPO_DIR="$REPO_DIR" bash -c '
+        set -euo pipefail
+        source "$REPO_DIR/setup.sh"
+        trap ":" ERR
+        set -E
+        before_flags="$-"
+        before_trap="$(trap -p ERR)"
+        succeeds() { :; }
+        fails_mid_function() { false; printf "continued\\n"; }
+        case "$1" in
+          success) run_guarded_function succeeds ;;
+          ordinary_failure) run_guarded_function fails_mid_function ;;
+          missing_function) run_guarded_function missing_guarded_function ;;
+        esac
+        after_flags="$-"
+        after_trap="$(trap -p ERR)"
+        [[ "$before_flags" == "$after_flags" ]] || exit 1
+        [[ "$before_trap" == "$after_trap" ]] || exit 1
+        printf "restored %s\\n" "$1"
+      ' _ "$case_name" 2>/dev/null
+    )"
+    case_exit=$?
+    set -e
+    assert_equals "0" "$case_exit" "guard restores ERR context after $case_name"
+    assert_equals "restored $case_name" "$output" "guard restores ERR context after $case_name"
+  done
+  pass "guarded functions restore caller ERR trap and errtrace state"
+}
+
 assert_command_fails_with() {
   local expected="$1"
   shift
@@ -591,6 +626,7 @@ test_module_ordering
 test_networking_profile
 test_apt_refreshes_once_across_manifests
 test_composed_networking_profile_refreshes_apt_once
+test_guarded_function_restores_err_context
 test_selector_contract
 test_conflict_backup_and_idempotency
 test_private_file_preserved

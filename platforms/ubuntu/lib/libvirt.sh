@@ -22,20 +22,51 @@ libvirt_network_autostarts() {
   libvirt_network_info "$@" | grep -Eq '^Autostart:[[:space:]]+yes$'
 }
 
+libvirt_xml_tag_has_attributes() {
+  local xml="$1" tag_name="$2" attributes attribute value matches
+  local index
+  local -a expected
+  shift 2
+  expected=("$@")
+
+  xml="${xml//$'\n'/ }"
+  xml="${xml//$'\r'/ }"
+  xml="${xml//$'\t'/ }"
+  while [[ "$xml" == *"<${tag_name} "* ]]; do
+    attributes="${xml#*"<${tag_name} "}"
+    [[ "$attributes" == *">"* ]] || return 1
+    xml="${attributes#*>}"
+    attributes="${attributes%%>*}"
+    matches=true
+
+    for ((index = 0; index < ${#expected[@]}; index += 2)); do
+      attribute="${expected[$index]}"
+      value="${expected[$((index + 1))]}"
+      if [[ " $attributes" != *" ${attribute}='${value}'"* ]] &&
+        [[ " $attributes" != *" ${attribute}=\"${value}\""* ]]; then
+        matches=false
+        break
+      fi
+    done
+    [[ "$matches" == "true" ]] && return 0
+  done
+  return 1
+}
+
 libvirt_network_is_nat() {
   local xml
   xml="$(libvirt_network_xml "$@")" || return 1
-  [[ "$xml" == *"<forward"* ]] &&
-    { [[ "$xml" == *"mode='nat'"* ]] || [[ "$xml" == *'mode="nat"'* ]]; }
+  libvirt_xml_tag_has_attributes "$xml" forward mode nat
 }
 
 libvirt_network_matches_isolated_policy() {
   local network="$1" xml
   shift
   xml="$(libvirt_network_xml "$network" "$@")" || return 1
-  { [[ "$xml" == *"address='192.168.77.1'"* ]] || [[ "$xml" == *'address="192.168.77.1"'* ]]; } || return 1
-  { [[ "$xml" == *"netmask='255.255.255.0'"* ]] || [[ "$xml" == *'netmask="255.255.255.0"'* ]]; } || return 1
-  [[ "$xml" != *"<forward"* ]]
+  [[ "$xml" != *"<forward"* ]] || return 1
+  libvirt_xml_tag_has_attributes "$xml" ip \
+    address 192.168.77.1 \
+    netmask 255.255.255.0
 }
 
 libvirt_ensure_network_started() {

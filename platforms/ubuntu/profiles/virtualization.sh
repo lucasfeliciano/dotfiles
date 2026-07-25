@@ -1,0 +1,2 @@
+PROFILE_NAME=virtualization
+PROFILE_MODULES=(virtualization)

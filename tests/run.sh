@@ -181,6 +181,58 @@ whois'
   pass "networking is additive and owns all diagnostics"
 }
 
+test_composed_optional_profiles() {
+  local order
+  order="$(module_order ubuntu 26.04 "$TEST_ROOT/composed-home" \
+    --profile virtualization networking virtualization)"
+  assert_equals \
+    "packages zsh eza mise ghostty git networking virtualization" \
+    "$order" \
+    "profile union, deduplication, and canonical order"
+  pass "optional profiles compose independently of CLI order"
+}
+
+test_libvirt_policy_inspection() {
+  REPO_DIR="$REPO_DIR" bash -c '
+    set -euo pipefail
+    source "$REPO_DIR/shared/lib/log.sh"
+    source "$REPO_DIR/shared/lib/command.sh"
+    source "$REPO_DIR/platforms/ubuntu/lib/libvirt.sh"
+
+    fake_isolated() {
+      case "$1 $2" in
+        "net-info vm-isolated") printf "Active: yes\nAutostart: yes\n" ;;
+        "net-dumpxml vm-isolated") printf "%s\n" \
+          "<network><ip address=\"192.168.77.1\" netmask=\"255.255.255.0\"/></network>" ;;
+        *) return 1 ;;
+      esac
+    }
+    fake_forwarded() {
+      printf "%s\n" \
+        "<network><forward mode=\"nat\"/><ip address=\"192.168.77.1\" netmask=\"255.255.255.0\"/></network>"
+    }
+    fake_wrong_subnet() {
+      printf "%s\n" \
+        "<network><ip address=\"192.168.88.1\" netmask=\"255.255.255.0\"/></network>"
+    }
+    fake_nat() {
+      printf "%s\n" "<network><forward mode=\"nat\"/></network>"
+    }
+
+    libvirt_network_matches_isolated_policy vm-isolated fake_isolated
+    ! libvirt_network_matches_isolated_policy vm-isolated fake_forwarded
+    ! libvirt_network_matches_isolated_policy vm-isolated fake_wrong_subnet
+    libvirt_network_is_nat default fake_nat
+  ' || fail "libvirt isolated-network policy inspection"
+
+  grep -q '<name>vm-isolated</name>' "$REPO_DIR/platforms/ubuntu/config/libvirt/vm-isolated.xml" || fail "neutral network name"
+  grep -q '192.168.77.1' "$REPO_DIR/platforms/ubuntu/config/libvirt/vm-isolated.xml" || fail "isolated subnet"
+  if grep -q '<forward' "$REPO_DIR/platforms/ubuntu/config/libvirt/vm-isolated.xml"; then
+    fail "isolated network forwarding"
+  fi
+  pass "libvirt inspection rejects forwarding and subnet conflicts"
+}
+
 test_apt_refreshes_once_across_manifests() {
   local output update_count
   output="$(
@@ -624,6 +676,8 @@ test_command_rendering_and_failure_status
 test_verify_reporter_status
 test_module_ordering
 test_networking_profile
+test_composed_optional_profiles
+test_libvirt_policy_inspection
 test_apt_refreshes_once_across_manifests
 test_composed_networking_profile_refreshes_apt_once
 test_guarded_function_restores_err_context

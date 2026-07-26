@@ -82,7 +82,12 @@ bootstrap_main() {
   else
     printf '\033[1;32m▸ Cloning dotfiles...\033[0m\n'
     bootstrap_run mkdir -p "$(dirname "$DOTFILES_DIR")"
-    bootstrap_run git clone "$DOTFILES_REPO" "$DOTFILES_DIR"
+    if [[ -n "${DOTFILES_BRANCH:-}" ]]; then
+      bootstrap_run git clone --branch "$DOTFILES_BRANCH" --single-branch \
+        "$DOTFILES_REPO" "$DOTFILES_DIR"
+    else
+      bootstrap_run git clone "$DOTFILES_REPO" "$DOTFILES_DIR"
+    fi
   fi
 
   if [[ "$DRY_RUN" == "true" && ! -d "$DOTFILES_DIR/.git" ]]; then

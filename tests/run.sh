@@ -1083,25 +1083,54 @@ test_bootstrap_dry_run() {
   )"
 
   [[ "$output" == *"git clone"* ]] || fail "bootstrap dry-run clone plan"
+  [[ "$output" != *"--branch"* ]] || fail "default bootstrap branch override"
+  [[ "$output" != *"--single-branch"* ]] || fail "default bootstrap single-branch clone"
   [[ ! -e "$bootstrap_home/.dotfiles" ]] || fail "bootstrap dry-run created checkout"
   pass "bootstrap dry-run is side-effect-free before cloning"
+}
+
+test_bootstrap_branch_dry_run() {
+  local bootstrap_home="$TEST_ROOT/bootstrap-branch-home"
+  local fake_bin="$TEST_ROOT/bootstrap-branch-bin" output
+  mkdir -p "$bootstrap_home" "$fake_bin"
+  printf '#!/bin/sh\nexit 0\n' > "$fake_bin/xcode-select"
+  chmod +x "$fake_bin/xcode-select"
+
+  output="$(
+    HOME="$bootstrap_home" \
+      DOTFILES_KERNEL_OVERRIDE=Darwin \
+      DOTFILES_DIR="$bootstrap_home/.dotfiles" \
+      DOTFILES_BRANCH=feat/ubuntu-support \
+      PATH="$fake_bin:$PATH" \
+      "$REPO_DIR/bootstrap.sh" --dry-run
+  )"
+
+  [[ "$output" == *"git clone --branch feat/ubuntu-support --single-branch"* ]] ||
+    fail "bootstrap selected branch clone plan"
+  [[ ! -e "$bootstrap_home/.dotfiles" ]] || fail "branch bootstrap dry-run created checkout"
+  pass "bootstrap dry-run selects an optional branch without side effects"
 }
 
 # The fake setup script expands argv and its output path when bootstrap runs it.
 # shellcheck disable=SC2016
 test_bootstrap_forwards_argv() {
   local checkout="$TEST_ROOT/bootstrap-checkout" fake_bin="$TEST_ROOT/bootstrap-bin"
-  local argv_file="$TEST_ROOT/bootstrap-argv"
+  local argv_file="$TEST_ROOT/bootstrap-argv" output
   mkdir -p "$checkout/.git" "$fake_bin"
   printf '#!/bin/sh\nexit 0\n' > "$fake_bin/xcode-select"
   chmod +x "$fake_bin/xcode-select"
   printf '#!/bin/bash\nprintf "%%s\\n" "$@" > "$BOOTSTRAP_ARGV_FILE"\n' > "$checkout/setup.sh"
   chmod +x "$checkout/setup.sh"
 
-  DOTFILES_KERNEL_OVERRIDE=Darwin DOTFILES_DIR="$checkout" BOOTSTRAP_ARGV_FILE="$argv_file" \
-    PATH="$fake_bin:$PATH" "$REPO_DIR/bootstrap.sh" \
-    --check --profile virtualization networking >/dev/null
+  output="$(
+    DOTFILES_KERNEL_OVERRIDE=Darwin DOTFILES_DIR="$checkout" \
+      DOTFILES_BRANCH=feat/ignored-for-existing-checkout \
+      BOOTSTRAP_ARGV_FILE="$argv_file" PATH="$fake_bin:$PATH" \
+      "$REPO_DIR/bootstrap.sh" --check --profile virtualization networking
+  )"
 
+  [[ "$output" == *"Dotfiles already cloned"* ]] || fail "existing checkout detection"
+  [[ "$output" != *"Cloning dotfiles"* ]] || fail "existing checkout branch clone"
   assert_equals $'--check\n--profile\nvirtualization\nnetworking' "$(sed -n '1,4p' "$argv_file")" \
     "bootstrap argv forwarding"
   pass "bootstrap forwards setup selectors unchanged"
@@ -1605,6 +1634,7 @@ test_conflict_backup_and_idempotency
 test_private_file_preserved
 test_dry_run_has_no_side_effects
 test_bootstrap_dry_run
+test_bootstrap_branch_dry_run
 test_bootstrap_forwards_argv
 test_bootstrap_dry_run_forwards_argv_with_checkout
 test_runtime_and_network_policy

@@ -17,6 +17,18 @@ On a new machine, run the bootstrap:
 curl -fsSL https://raw.githubusercontent.com/lucasfeliciano/dotfiles/main/bootstrap.sh | bash
 ```
 
+To test an unmerged branch on a new machine, fetch that branch's bootstrap and
+scope `DOTFILES_BRANCH` to the Bash process running it:
+
+```sh
+curl -fsSL \
+  https://raw.githubusercontent.com/lucasfeliciano/dotfiles/feat/example/bootstrap.sh |
+  DOTFILES_BRANCH=feat/example bash
+```
+
+The branch override applies only when bootstrap creates a new checkout. It does
+not fetch or switch an existing checkout.
+
 From an existing checkout, run:
 
 ```sh

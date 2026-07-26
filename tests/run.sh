@@ -685,6 +685,26 @@ test_composed_optional_profiles() {
   pass "optional profiles compose independently of CLI order"
 }
 
+test_virtualization_profile_selects_concrete_qemu_provider() {
+  local home_dir output virtualization_install
+
+  home_dir="$TEST_ROOT/virtualization-provider-home"
+  mkdir -p "$home_dir"
+  output="$(
+    DOTFILES_PLATFORM_OVERRIDE=ubuntu \
+      DOTFILES_PLATFORM_VERSION_OVERRIDE=26.04 \
+      HOME="$home_dir" \
+      "$REPO_DIR/setup.sh" --dry-run --profile virtualization
+  )"
+  virtualization_install="$(grep 'sudo apt-get install -y' <<< "$output" | tail -n 1)"
+
+  [[ " $virtualization_install " == *" qemu-system-x86 "* ]] ||
+    fail "virtualization install command does not select qemu-system-x86"
+  [[ " $virtualization_install " != *" qemu-kvm "* ]] ||
+    fail "virtualization install command retains ambiguous qemu-kvm package"
+  pass "virtualization profile selects a concrete QEMU provider"
+}
+
 test_libvirt_policy_inspection() {
   REPO_DIR="$REPO_DIR" bash -c '
     set -euo pipefail
@@ -1238,7 +1258,7 @@ test_runtime_and_network_policy() {
 test_package_scope() {
   grep -qx 'code --classic' "$REPO_DIR/platforms/ubuntu/packages/base.snap" || fail "VS Code classic Snap"
   grep -qx 'ghostty' "$REPO_DIR/platforms/ubuntu/packages/base.apt" || fail "Ghostty base package"
-  if grep -Eq '^(iproute2|iputils-ping|dnsutils|netcat-openbsd|tcpdump|traceroute|mtr-tiny|whois|qemu-kvm|libvirt)' \
+  if grep -Eq '^(iproute2|iputils-ping|dnsutils|netcat-openbsd|tcpdump|traceroute|mtr-tiny|whois|qemu-kvm|qemu-system-x86|libvirt)' \
     "$REPO_DIR/platforms/ubuntu/packages/base.apt"; then
     fail "optional packages leaked into Ubuntu base"
   fi
@@ -1687,6 +1707,7 @@ test_production_helper_ownership
 test_module_ordering
 test_networking_profile
 test_composed_optional_profiles
+test_virtualization_profile_selects_concrete_qemu_provider
 test_remote_installers_fail_on_download_errors
 test_libvirt_policy_inspection
 test_virtualization_stops_after_failed_default_start

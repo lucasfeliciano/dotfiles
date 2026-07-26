@@ -55,7 +55,7 @@ It changes no interfaces, routes, DNS, firewall, services, or probes.
 The virtualization profile installs nine packages:
 
 ```text
-qemu-kvm
+qemu-system-x86
 qemu-utils
 libvirt-daemon-system
 libvirt-clients

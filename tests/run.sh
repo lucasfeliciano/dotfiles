@@ -1111,6 +1111,32 @@ test_bootstrap_branch_dry_run() {
   pass "bootstrap dry-run selects an optional branch without side effects"
 }
 
+test_bootstrap_runs_from_stdin() {
+  local bootstrap_home="$TEST_ROOT/bootstrap-stdin-home"
+  local fake_bin="$TEST_ROOT/bootstrap-stdin-bin" output status
+  mkdir -p "$bootstrap_home" "$fake_bin"
+  printf '#!/bin/sh\nexit 0\n' > "$fake_bin/xcode-select"
+  chmod +x "$fake_bin/xcode-select"
+
+  set +e
+  output="$(
+    HOME="$bootstrap_home" \
+      DOTFILES_KERNEL_OVERRIDE=Darwin \
+      DOTFILES_DIR="$bootstrap_home/.dotfiles" \
+      DOTFILES_BRANCH=feat/ubuntu-support \
+      PATH="$fake_bin:$PATH" \
+      bash -s -- --dry-run < "$REPO_DIR/bootstrap.sh" 2>&1
+  )"
+  status=$?
+  set -e
+
+  assert_equals "0" "$status" "bootstrap stdin execution status"
+  [[ "$output" == *"git clone --branch feat/ubuntu-support --single-branch"* ]] ||
+    fail "bootstrap stdin branch clone plan"
+  [[ ! -e "$bootstrap_home/.dotfiles" ]] || fail "bootstrap stdin dry-run created checkout"
+  pass "bootstrap executes safely from stdin with nounset enabled"
+}
+
 # The fake setup script expands argv and its output path when bootstrap runs it.
 # shellcheck disable=SC2016
 test_bootstrap_forwards_argv() {
@@ -1635,6 +1661,7 @@ test_private_file_preserved
 test_dry_run_has_no_side_effects
 test_bootstrap_dry_run
 test_bootstrap_branch_dry_run
+test_bootstrap_runs_from_stdin
 test_bootstrap_forwards_argv
 test_bootstrap_dry_run_forwards_argv_with_checkout
 test_runtime_and_network_policy

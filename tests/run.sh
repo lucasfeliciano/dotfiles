@@ -877,6 +877,28 @@ test_libvirt_policy_inspection() {
   pass "libvirt inspection rejects forwarding and subnet conflicts"
 }
 
+test_libvirt_state_checks_consume_complete_output() {
+  REPO_DIR="$REPO_DIR" bash -c '
+    set -euo pipefail
+    source "$REPO_DIR/platforms/ubuntu/lib/libvirt.sh"
+
+    verbose_net_info() {
+      local field="$1" index
+      printf "%s: yes\n" "$field"
+      for ((index = 0; index < 4096; index++)); do
+        printf "Trailing: %08d xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n" "$index"
+      done
+    }
+    verbose_active() { verbose_net_info Active; }
+    verbose_autostart() { verbose_net_info Autostart; }
+
+    libvirt_network_is_active default verbose_active
+    libvirt_network_autostarts default verbose_autostart
+  ' || fail "libvirt state checks consume complete output"
+
+  pass "libvirt state checks avoid successful-match SIGPIPE failures"
+}
+
 test_libvirt_network_start_race_converges() {
   local trace_file="$TEST_ROOT/libvirt-start-race-trace"
 
@@ -1745,6 +1767,7 @@ test_composed_optional_profiles
 test_virtualization_profile_selects_concrete_qemu_provider
 test_remote_installers_fail_on_download_errors
 test_libvirt_policy_inspection
+test_libvirt_state_checks_consume_complete_output
 test_libvirt_network_start_race_converges
 test_virtualization_stops_after_failed_default_start
 test_apt_refreshes_once_across_manifests

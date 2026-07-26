@@ -15,11 +15,15 @@ libvirt_network_exists() {
 }
 
 libvirt_network_is_active() {
-  libvirt_network_info "$@" | grep -Eq '^Active:[[:space:]]+yes$'
+  local info
+  info="$(libvirt_network_info "$@")" || return
+  grep -Eq '^Active:[[:space:]]+yes$' <<< "$info"
 }
 
 libvirt_network_autostarts() {
-  libvirt_network_info "$@" | grep -Eq '^Autostart:[[:space:]]+yes$'
+  local info
+  info="$(libvirt_network_info "$@")" || return
+  grep -Eq '^Autostart:[[:space:]]+yes$' <<< "$info"
 }
 
 libvirt_xml_tag_attribute_equals() {

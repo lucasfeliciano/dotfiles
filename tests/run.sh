@@ -289,6 +289,42 @@ test_platform_detection() {
   pass "platform detection accepts Ubuntu 26.04 amd64 and rejects other profiles"
 }
 
+test_ubuntu_adapter_finds_mise_installed_later_in_same_process() {
+  local home_dir="$TEST_ROOT/ubuntu-mise-path-home" output
+
+  output="$(
+    HOME="$home_dir" PATH=/usr/bin:/bin REPO_DIR="$REPO_DIR" bash -c '
+      DOTFILES_DIR="$REPO_DIR"
+      source "$REPO_DIR/platforms/ubuntu/adapter.sh"
+      mkdir -p "$HOME/.local/bin"
+      printf "#!/bin/sh\nexit 0\n" > "$HOME/.local/bin/mise"
+      chmod +x "$HOME/.local/bin/mise"
+      command -v mise || printf "missing\n"
+    '
+  )"
+  assert_equals "$home_dir/.local/bin/mise" "$output" \
+    "Ubuntu adapter discovers mise installed during setup"
+  pass "Ubuntu setup discovers a standard mise install without restarting the shell"
+}
+
+test_ubuntu_adapter_path_is_idempotent() {
+  local home_dir="$TEST_ROOT/ubuntu-adapter-path-home" output
+
+  output="$(
+    HOME="$home_dir" PATH=/usr/bin:/bin REPO_DIR="$REPO_DIR" bash -c '
+      DOTFILES_DIR="$REPO_DIR"
+      source "$REPO_DIR/platforms/ubuntu/adapter.sh"
+      path_after_first_source="$PATH"
+      source "$REPO_DIR/platforms/ubuntu/adapter.sh"
+      [[ "$PATH" == "$path_after_first_source" ]]
+      printf "%s\n" "$PATH"
+    '
+  )"
+  assert_equals "$home_dir/.local/bin:/usr/bin:/bin" "$output" \
+    "Ubuntu adapter user-local PATH idempotency"
+  pass "Ubuntu adapter adds its standard user-local bin directory once"
+}
+
 main_detection() {
   REPO_DIR="$REPO_DIR" bash -c '
     set -e
@@ -1638,6 +1674,8 @@ test_lint_contract
 test_final_repository_structure_and_scope
 test_bash_syntax
 test_platform_detection
+test_ubuntu_adapter_finds_mise_installed_later_in_same_process
+test_ubuntu_adapter_path_is_idempotent
 test_bootstrap_detector_parity
 test_command_rendering_and_failure_status
 test_verify_reporter_status

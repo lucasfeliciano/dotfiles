@@ -1,4 +1,10 @@
 # Sourced adapter outputs consumed by shared modules.
+# User-local executables installed outside APT, including mise.
+case ":$PATH:" in
+  *":$HOME/.local/bin:"*) ;;
+  *) export PATH="$HOME/.local/bin:$PATH" ;;
+esac
+
 # shellcheck disable=SC2034
 PLATFORM_PNPM_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/pnpm"
 # shellcheck disable=SC2034

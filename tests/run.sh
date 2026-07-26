@@ -568,7 +568,7 @@ test_check_mode_selection_and_safety() {
   mkdir -p "$home_dir" "$fake_bin"
   printf '#!/bin/sh\ntouch "$CHECK_SUDO_MARKER"\nexit 99\n' > "$fake_bin/sudo"
   printf '#!/bin/sh\ntouch "$CHECK_PACKAGE_MARKER"\nexit 99\n' > "$fake_bin/apt-get"
-  printf '#!/bin/sh\ncase "$1 $2" in\n  "list code") exit 0 ;;\n  "info code") printf "confinement: classic\\n"; exit 0 ;;\n  *) touch "$CHECK_PACKAGE_MARKER"; exit 99 ;;\nesac\n' > "$fake_bin/snap"
+  printf '#!/bin/sh\ncase "$1 $2 $3" in\n  "list code ") exit 0 ;;\n  "info --verbose code") printf "  confinement:       classic\\n"; exit 0 ;;\n  *) touch "$CHECK_PACKAGE_MARKER"; exit 99 ;;\nesac\n' > "$fake_bin/snap"
   printf '#!/bin/sh\ncase "$1 $2" in\n  "bundle check") exit 0 ;;\n  *) touch "$CHECK_PACKAGE_MARKER"; exit 99 ;;\nesac\n' > "$fake_bin/brew"
   printf '#!/bin/sh\ntouch "$CHECK_SYSTEM_MARKER"\nexit 99\n' > "$fake_bin/chsh"
   printf '#!/bin/sh\ntouch "$CHECK_SYSTEM_MARKER"\nexit 99\n' > "$fake_bin/usermod"
@@ -582,6 +582,8 @@ test_check_mode_selection_and_safety() {
     CHECK_SYSTEM_MARKER="$system_marker" \
     check_output ubuntu 26.04 "$home_dir" --profile networking)"
   [[ "$output" == *"Checking packages"* ]] || fail "base package check selection"
+  [[ "$output" == *"PASS: VS Code is installed as a classic Snap"* ]] || \
+    fail "classic VS Code Snap check"
   [[ "$output" == *"Checking networking"* ]] || fail "networking check selection"
   [[ "$output" != *"N/A: networking has no meaningful automated check"* ]] || \
     fail "networking check implementation"

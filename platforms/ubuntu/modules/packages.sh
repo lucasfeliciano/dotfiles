@@ -8,8 +8,8 @@ check_packages() {
     verify_fail "VS Code classic Snap is missing; run './setup.sh --module packages'"
     return
   fi
-  snap_info="$(snap info code 2>/dev/null || true)"
-  if grep -Eq '^confinement:[[:space:]]+classic$' <<< "$snap_info"; then
+  snap_info="$(snap info --verbose code 2>/dev/null || true)"
+  if grep -Eq '^[[:space:]]*confinement:[[:space:]]+classic[[:space:]]*$' <<< "$snap_info"; then
     verify_pass "VS Code is installed as a classic Snap"
   else
     verify_fail "VS Code Snap is not classic; reinstall with './setup.sh --module packages'"

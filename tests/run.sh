@@ -877,6 +877,41 @@ test_libvirt_policy_inspection() {
   pass "libvirt inspection rejects forwarding and subnet conflicts"
 }
 
+test_libvirt_network_start_race_converges() {
+  local trace_file="$TEST_ROOT/libvirt-start-race-trace"
+
+  REPO_DIR="$REPO_DIR" TRACE_FILE="$trace_file" bash -c '
+    set -euo pipefail
+    source "$REPO_DIR/shared/lib/log.sh"
+    source "$REPO_DIR/shared/lib/command.sh"
+    source "$REPO_DIR/platforms/ubuntu/lib/libvirt.sh"
+
+    DRY_RUN=false
+    fake_virsh() {
+      printf "%s\n" "$*" >> "$TRACE_FILE"
+      case "$1 $2" in
+        "net-info default")
+          if grep -qx "net-start default" "$TRACE_FILE"; then
+            printf "Active: yes\nAutostart: no\n"
+          else
+            printf "Active: no\nAutostart: no\n"
+          fi
+          ;;
+        "net-start default") return 55 ;;
+        "net-autostart default") return 0 ;;
+        *) return 1 ;;
+      esac
+    }
+
+    output="$(libvirt_ensure_network_started default fake_virsh)"
+
+    [[ "$output" != *"Command failed"* ]]
+    grep -qx "net-autostart default" "$TRACE_FILE"
+  ' || fail "libvirt start race convergence"
+
+  pass "libvirt accepts a network that becomes active during start"
+}
+
 test_virtualization_stops_after_failed_default_start() {
   local trace_file="$TEST_ROOT/virtualization-failure-trace"
 
@@ -1710,6 +1745,7 @@ test_composed_optional_profiles
 test_virtualization_profile_selects_concrete_qemu_provider
 test_remote_installers_fail_on_download_errors
 test_libvirt_policy_inspection
+test_libvirt_network_start_race_converges
 test_virtualization_stops_after_failed_default_start
 test_apt_refreshes_once_across_manifests
 test_composed_networking_profile_refreshes_apt_once

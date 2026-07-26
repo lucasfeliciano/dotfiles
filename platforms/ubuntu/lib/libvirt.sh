@@ -245,8 +245,16 @@ libvirt_network_matches_isolated_policy() {
 }
 
 libvirt_ensure_network_started() {
-  local network="$1"
+  local network="$1" start_status
   shift
-  libvirt_network_is_active "$network" "$@" || run "$@" net-start "$network" || return
+  if ! libvirt_network_is_active "$network" "$@"; then
+    "$@" net-start "$network" || {
+      start_status=$?
+      if ! libvirt_network_is_active "$network" "$@"; then
+        error "Command failed: $(quote_command "$@" net-start "$network")"
+        return "$start_status"
+      fi
+    }
+  fi
   libvirt_network_autostarts "$network" "$@" || run "$@" net-autostart "$network" || return
 }

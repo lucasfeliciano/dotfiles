@@ -1342,6 +1342,56 @@ test_bootstrap_dry_run_forwards_argv_with_checkout() {
   pass "bootstrap dry-run forwards selectors through an existing checkout"
 }
 
+# The fake mise script expands its arguments only when zsh starts up.
+# shellcheck disable=SC2016
+test_mise_shims_precede_legacy_user_tools() {
+  local home_dir="$TEST_ROOT/mise-shim-precedence-home"
+  local fake_bin="$TEST_ROOT/mise-shim-precedence-bin"
+  local output expected
+
+  mkdir -p \
+    "$home_dir/.local/bin" \
+    "$home_dir/.local/share/mise/shims" \
+    "$home_dir/.oh-my-zsh" \
+    "$home_dir/.config/zsh" \
+    "$fake_bin"
+  printf '%s\n' '#!/bin/sh' 'exit 0' > "$home_dir/.local/bin/uv"
+  printf '%s\n' '#!/bin/sh' 'exit 0' > "$home_dir/.local/bin/local-helper"
+  printf '%s\n' '#!/bin/sh' 'exit 0' > "$home_dir/.local/share/mise/shims/uv"
+  printf '%s\n' \
+    '#!/bin/sh' \
+    '[ "$#" -eq 2 ] && [ "$1" = "activate" ] && [ "$2" = "zsh" ] || exit 90' \
+    'exit 0' > "$fake_bin/mise"
+  chmod +x \
+    "$home_dir/.local/bin/uv" \
+    "$home_dir/.local/bin/local-helper" \
+    "$home_dir/.local/share/mise/shims/uv" \
+    "$fake_bin/mise"
+  : > "$home_dir/.oh-my-zsh/oh-my-zsh.sh"
+  : > "$home_dir/.aliases"
+  : > "$home_dir/.config/zsh/platform.zsh"
+
+  output="$(
+    HOME="$home_dir" PATH="$fake_bin:/usr/bin:/bin" REPO_DIR="$REPO_DIR" zsh -dfc '
+      source "$REPO_DIR/shared/config/zsh/.zshrc"
+      source "$REPO_DIR/shared/config/zsh/.zshrc"
+      printf "uv=%s\n" "$(command -v uv)"
+      printf "local=%s\n" "$(command -v local-helper)"
+      shim_count=0
+      for entry in "${path[@]}"; do
+        [[ "$entry" == "$HOME/.local/share/mise/shims" ]] && ((shim_count += 1))
+      done
+      printf "shim-count=%s\n" "$shim_count"
+    '
+  )"
+  expected="$(printf 'uv=%s\nlocal=%s\nshim-count=1' \
+    "$home_dir/.local/share/mise/shims/uv" \
+    "$home_dir/.local/bin/local-helper")"
+
+  assert_equals "$expected" "$output" "mise shim PATH precedence"
+  pass "mise shims precede legacy user tools without hiding unrelated commands"
+}
+
 test_runtime_and_network_policy() {
   grep -q '^python = "latest"$' "$REPO_DIR/shared/config/mise/config.toml" ||
     fail "mise global Python"
@@ -1828,6 +1878,7 @@ test_bootstrap_runs_from_stdin
 test_bootstrap_routes_setup_input
 test_bootstrap_forwards_argv
 test_bootstrap_dry_run_forwards_argv_with_checkout
+test_mise_shims_precede_legacy_user_tools
 test_runtime_and_network_policy
 test_package_scope
 test_manifest_parsing

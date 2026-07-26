@@ -35,6 +35,8 @@ source $HOME/.aliases
 source "$HOME/.config/zsh/platform.zsh"
 
 # mise
+path=("$HOME/.local/share/mise/shims" ${path:#"$HOME/.local/share/mise/shims"})
+export PATH
 eval "$(mise activate zsh)"
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.

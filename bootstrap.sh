@@ -4,6 +4,10 @@ set -euo pipefail
 DOTFILES_REPO="https://github.com/lucasfeliciano/dotfiles.git"
 DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.dotfiles}"
 DRY_RUN=false
+BOOTSTRAP_FROM_STDIN=false
+if [[ -z "${BASH_SOURCE[0]:-}" ]]; then
+  BOOTSTRAP_FROM_STDIN=true
+fi
 
 bootstrap_run() {
   if [[ "$DRY_RUN" == "true" ]]; then
@@ -12,6 +16,17 @@ bootstrap_run() {
     printf '\033[1;34m[dry-run]\033[0m %s\n' "${printable% }"
   else
     "$@"
+  fi
+}
+
+bootstrap_run_setup() {
+  local setup_input="${DOTFILES_TTY_PATH:-/dev/tty}"
+
+  if [[ "$BOOTSTRAP_FROM_STDIN" == "true" ]] &&
+    (: < "$setup_input") 2>/dev/null; then
+    ./setup.sh "$@" < "$setup_input"
+  else
+    ./setup.sh "$@"
   fi
 }
 
@@ -101,7 +116,7 @@ bootstrap_main() {
 
   printf '\n\033[1;4;32mRunning setup\033[0m\n'
   cd "$DOTFILES_DIR"
-  ./setup.sh "$@"
+  bootstrap_run_setup "$@"
 }
 
 if [[ -z "${BASH_SOURCE[0]:-}" || "${BASH_SOURCE[0]:-}" == "$0" ]]; then

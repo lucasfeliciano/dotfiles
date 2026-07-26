@@ -1250,6 +1250,49 @@ test_bootstrap_runs_from_stdin() {
   pass "bootstrap executes safely from stdin with nounset enabled"
 }
 
+# The fake setup script expands its answer and output path when bootstrap runs it.
+# shellcheck disable=SC2016
+test_bootstrap_routes_setup_input() {
+  local checkout="$TEST_ROOT/bootstrap-input-checkout"
+  local home_dir="$TEST_ROOT/bootstrap-input-home"
+  local fake_bin="$TEST_ROOT/bootstrap-input-bin"
+  local terminal_input="$TEST_ROOT/bootstrap-terminal-input"
+  local captured_input="$TEST_ROOT/bootstrap-captured-input"
+  local missing_terminal="$TEST_ROOT/bootstrap-missing-terminal"
+  local status
+
+  mkdir -p "$checkout/.git" "$home_dir" "$fake_bin"
+  printf '#!/bin/sh\nexit 0\n' > "$fake_bin/xcode-select"
+  chmod +x "$fake_bin/xcode-select"
+  printf '#!/bin/bash\nif IFS= read -r answer; then\n  printf "%%s\\n" "$answer"\nelse\n  printf "EOF\\n"\nfi > "$BOOTSTRAP_INPUT_FILE"\n' > "$checkout/setup.sh"
+  chmod +x "$checkout/setup.sh"
+  printf 'n\n' > "$terminal_input"
+
+  HOME="$home_dir" DOTFILES_KERNEL_OVERRIDE=Darwin DOTFILES_DIR="$checkout" \
+    DOTFILES_TTY_PATH="$terminal_input" BOOTSTRAP_INPUT_FILE="$captured_input" \
+    PATH="$fake_bin:$PATH" bash -s < "$REPO_DIR/bootstrap.sh" >/dev/null
+  assert_equals "n" "$(< "$captured_input")" \
+    "bootstrap-from-stdin terminal input"
+
+  printf 'piped\n' |
+    HOME="$home_dir" DOTFILES_KERNEL_OVERRIDE=Darwin DOTFILES_DIR="$checkout" \
+      DOTFILES_TTY_PATH="$terminal_input" BOOTSTRAP_INPUT_FILE="$captured_input" \
+      PATH="$fake_bin:$PATH" "$REPO_DIR/bootstrap.sh" >/dev/null
+  assert_equals "piped" "$(< "$captured_input")" \
+    "file bootstrap piped input"
+
+  set +e
+  HOME="$home_dir" DOTFILES_KERNEL_OVERRIDE=Darwin DOTFILES_DIR="$checkout" \
+    DOTFILES_TTY_PATH="$missing_terminal" BOOTSTRAP_INPUT_FILE="$captured_input" \
+    PATH="$fake_bin:$PATH" bash -s < "$REPO_DIR/bootstrap.sh" >/dev/null
+  status=$?
+  set -e
+  assert_equals "0" "$status" "bootstrap stdin without terminal status"
+  assert_equals "EOF" "$(< "$captured_input")" \
+    "bootstrap stdin without terminal fallback"
+  pass "bootstrap routes setup input according to its invocation"
+}
+
 # The fake setup script expands argv and its output path when bootstrap runs it.
 # shellcheck disable=SC2016
 test_bootstrap_forwards_argv() {
@@ -1780,6 +1823,7 @@ test_dry_run_has_no_side_effects
 test_bootstrap_dry_run
 test_bootstrap_branch_dry_run
 test_bootstrap_runs_from_stdin
+test_bootstrap_routes_setup_input
 test_bootstrap_forwards_argv
 test_bootstrap_dry_run_forwards_argv_with_checkout
 test_runtime_and_network_policy

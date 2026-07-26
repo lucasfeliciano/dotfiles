@@ -82,6 +82,17 @@ test_shipped_root_directories_ignore_optional_design_roots() {
   pass "ignored design roots are optional outside the shipped structure"
 }
 
+test_gitignore_has_no_tracked_files() {
+  local tracked_ignored
+
+  tracked_ignored="$(git -C "$REPO_DIR" ls-files --cached --ignored --exclude-standard)"
+  if [[ -n "$tracked_ignored" ]]; then
+    printf 'tracked files matching .gitignore:\n%s\n' "$tracked_ignored" >&2
+    fail "tracked files bypass .gitignore"
+  fi
+  pass ".gitignore excludes every ignored artifact from the index"
+}
+
 test_shipped_bash_discovery_ignores_design_artifacts() {
   local fixture_root="$TEST_ROOT/shipped-bash-discovery" discovered="" script
 
@@ -1841,6 +1852,7 @@ test_git_check_accepts_identity_or_explicit_opt_out() {
 
 test_forbidden_scope_term_boundaries
 test_shipped_root_directories_ignore_optional_design_roots
+test_gitignore_has_no_tracked_files
 test_shipped_bash_discovery_ignores_design_artifacts
 test_lint_contract
 test_final_repository_structure_and_scope

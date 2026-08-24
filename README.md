@@ -73,8 +73,8 @@ These are the supported command forms:
 | Repository file | Destination |
 | --- | --- |
 | `shared/config/zsh/.zshrc` | `~/.zshrc` |
-| `shared/config/zsh/.p10k.zsh` | `~/.p10k.zsh` |
 | `shared/config/zsh/.aliases` | `~/.aliases` |
+| `shared/config/starship/starship.toml` | `~/.config/starship.toml` |
 | `platforms/<platform>/config/zsh/platform.zsh` | `~/.config/zsh/platform.zsh` |
 | `shared/config/eza/theme.yml` | `~/.config/eza/theme.yml` |
 | `shared/config/ghostty/config` | `~/.config/ghostty/config` |

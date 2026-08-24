@@ -1,9 +1,23 @@
-# Oh My Zsh, plugins, theme, and shell config symlinks.
+# Oh My Zsh, plugins, Starship, and shell config symlinks.
 # Sourced by setup.sh — do not execute directly.
+
+retire_powerlevel10k_config() {
+  local destination="$HOME/.p10k.zsh"
+  local managed_target="$DOTFILES_DIR/shared/config/zsh/.p10k.zsh"
+
+  [[ -L "$destination" ]] || return 0
+
+  if [[ "$(readlink "$destination")" == "$managed_target" ]]; then
+    run unlink "$destination"
+    e_note "Retired the managed Powerlevel10k configuration at ${destination}"
+  else
+    e_warning "Leaving ${destination} untouched because it is not the managed Powerlevel10k symlink"
+  fi
+}
 
 preflight_zsh() {
   local command_name
-  for command_name in curl git zsh eza; do
+  for command_name in curl git zsh eza starship; do
     require_command_or_module "$command_name" packages \
       "run './setup.sh --profile base' or include 'packages' in --module" || return
   done
@@ -12,10 +26,16 @@ preflight_zsh() {
 check_zsh() {
   verify_command zsh "run './setup.sh --module packages zsh'"
   verify_command eza "run './setup.sh --module packages zsh'"
+  verify_command starship "run './setup.sh --module packages zsh'"
   verify_symlink "$DOTFILES_DIR/shared/config/zsh/.zshrc" "$HOME/.zshrc" "run './setup.sh --module zsh'"
   verify_symlink "$DOTFILES_DIR/shared/config/zsh/.aliases" "$HOME/.aliases" "run './setup.sh --module zsh'"
-  verify_symlink "$DOTFILES_DIR/shared/config/zsh/.p10k.zsh" "$HOME/.p10k.zsh" "run './setup.sh --module zsh'"
+  verify_symlink "$DOTFILES_DIR/shared/config/starship/starship.toml" "$HOME/.config/starship.toml" "run './setup.sh --module zsh'"
   verify_symlink "$PLATFORM_ZSH_FRAGMENT" "$HOME/.config/zsh/platform.zsh" "run './setup.sh --module zsh'"
+  if [[ -L "$HOME/.p10k.zsh" && "$(readlink "$HOME/.p10k.zsh")" == "$DOTFILES_DIR/shared/config/zsh/.p10k.zsh" ]]; then
+    verify_fail "$HOME/.p10k.zsh still points to the retired managed Powerlevel10k configuration; run './setup.sh --module zsh'"
+  else
+    verify_pass "the managed Powerlevel10k configuration is retired"
+  fi
   if [[ -f "$HOME/.zshrc_private" && ! -L "$HOME/.zshrc_private" ]]; then
     verify_pass "$HOME/.zshrc_private is a local file"
   else
@@ -61,17 +81,12 @@ setup_zsh() {
     run git clone https://github.com/z-shell/zsh-eza.git "$ZSH_CUSTOM/plugins/zsh-eza"
   fi
 
-  if [ -d "$ZSH_CUSTOM/themes/powerlevel10k" ]; then
-    e_warning "powerlevel10k theme is already installed. skipping.."
-  else
-    run git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$ZSH_CUSTOM/themes/powerlevel10k"
-  fi
-
   link_config "$DOTFILES_DIR/shared/config/zsh/.aliases" "$HOME/.aliases"
   link_config "$DOTFILES_DIR/shared/config/zsh/.zshrc" "$HOME/.zshrc"
-  link_config "$DOTFILES_DIR/shared/config/zsh/.p10k.zsh" "$HOME/.p10k.zsh"
+  link_config "$DOTFILES_DIR/shared/config/starship/starship.toml" "$HOME/.config/starship.toml"
   link_config "$PLATFORM_ZSH_FRAGMENT" "$HOME/.config/zsh/platform.zsh"
   ensure_local_copy "$DOTFILES_DIR/shared/config/zsh/.zshrc_private.template" "$HOME/.zshrc_private"
+  retire_powerlevel10k_config
 
   if [[ "${SHELL:-}" == "$zsh_path" ]]; then
     e_note "Zsh is already the login shell"

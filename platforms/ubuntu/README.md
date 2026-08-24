@@ -4,7 +4,7 @@ Ubuntu support targets Ubuntu 26.04 on amd64 hardware.
 
 ## Base profile
 
-The base APT inventory contains exactly these 20 packages:
+The base APT inventory contains exactly these 21 packages:
 
 ```text
 zsh
@@ -21,6 +21,7 @@ ripgrep
 fd-find
 bat
 eza
+starship
 tmux
 btop
 tree

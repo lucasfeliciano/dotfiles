@@ -1,6 +1,7 @@
 brew "git"
 brew "mise"
 brew "eza"
+brew "starship"
 
 # Ghostty Terminal
 cask "ghostty"

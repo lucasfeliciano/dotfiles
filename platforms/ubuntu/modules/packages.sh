@@ -1,6 +1,6 @@
 check_packages() {
   local command_name snap_info
-  for command_name in zsh git curl wget gpg cc shellcheck jq fzf rg fdfind batcat eza tmux btop tree unzip 7z ghostty; do
+  for command_name in zsh git curl wget gpg cc shellcheck jq fzf rg fdfind batcat eza starship tmux btop tree unzip 7z ghostty; do
     verify_command "$command_name" "run './setup.sh --module packages'"
   done
 

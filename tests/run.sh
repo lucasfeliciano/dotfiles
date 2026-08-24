@@ -185,7 +185,8 @@ test_final_repository_structure_and_scope() {
     bootstrap.sh setup.sh README.md
     shared/lib/log.sh shared/lib/command.sh shared/lib/fs.sh shared/lib/platform.sh shared/lib/verify.sh
     shared/modules/zsh.sh shared/modules/eza.sh shared/modules/git.sh shared/modules/mise.sh shared/modules/ghostty.sh
-    shared/config/zsh/.zshrc shared/config/eza/theme.yml shared/config/mise/config.toml
+    shared/config/zsh/.zshrc shared/config/starship/starship.toml
+    shared/config/eza/theme.yml shared/config/mise/config.toml
     shared/config/uv/uv.toml shared/config/ghostty/config
     platforms/macos/adapter.sh platforms/macos/registry.sh platforms/macos/profiles/base.sh
     platforms/macos/modules/packages.sh platforms/macos/modules/system.sh platforms/macos/packages/Brewfile
@@ -213,6 +214,7 @@ test_final_repository_structure_and_scope() {
   done
   for path in \
     lib util config packages scripts docs/ubuntu-lab.md \
+    shared/config/zsh/.p10k.zsh \
     platforms/ubuntu/modules/security.sh platforms/ubuntu/modules/vscode.sh; do
     [[ ! -e "$REPO_DIR/$path" ]] || fail "legacy path remains: $path"
   done
@@ -1169,6 +1171,42 @@ test_private_file_preserved() {
   pass ".zshrc_private remains local and untouched"
 }
 
+test_powerlevel10k_config_retirement_safety() {
+  local home_dir foreign_target legacy_target
+
+  home_dir="$TEST_ROOT/p10k-retirement-home"
+  foreign_target="$TEST_ROOT/foreign-p10k.zsh"
+  legacy_target="$REPO_DIR/shared/config/zsh/.p10k.zsh"
+  mkdir -p "$home_dir"
+  printf 'foreign\n' > "$foreign_target"
+
+  ln -s "$legacy_target" "$home_dir/.p10k.zsh"
+  HOME="$home_dir" REPO_DIR="$REPO_DIR" bash -c '
+    set -euo pipefail
+    DRY_RUN=false
+    DOTFILES_DIR="$REPO_DIR"
+    source "$REPO_DIR/shared/lib/log.sh"
+    source "$REPO_DIR/shared/lib/command.sh"
+    source "$REPO_DIR/shared/modules/zsh.sh"
+    retire_powerlevel10k_config
+  ' >/dev/null
+  [[ ! -L "$home_dir/.p10k.zsh" ]] || fail "managed Powerlevel10k symlink retirement"
+
+  ln -s "$foreign_target" "$home_dir/.p10k.zsh"
+  HOME="$home_dir" REPO_DIR="$REPO_DIR" bash -c '
+    set -euo pipefail
+    DRY_RUN=false
+    DOTFILES_DIR="$REPO_DIR"
+    source "$REPO_DIR/shared/lib/log.sh"
+    source "$REPO_DIR/shared/lib/command.sh"
+    source "$REPO_DIR/shared/modules/zsh.sh"
+    retire_powerlevel10k_config
+  ' >/dev/null
+  assert_equals "$foreign_target" "$(readlink "$home_dir/.p10k.zsh")" \
+    "foreign Powerlevel10k symlink preservation"
+  pass "Powerlevel10k retirement removes only the former managed symlink"
+}
+
 test_dry_run_has_no_side_effects() {
   local home_dir fake_bin marker before after
 
@@ -1373,11 +1411,15 @@ test_mise_shims_precede_legacy_user_tools() {
     '#!/bin/sh' \
     '[ "$#" -eq 2 ] && [ "$1" = "activate" ] && [ "$2" = "zsh" ] || exit 90' \
     'exit 0' > "$fake_bin/mise"
+  printf '%s\n' \
+    '#!/bin/sh' \
+    '[ "$#" -eq 2 ] && [ "$1" = "init" ] && [ "$2" = "zsh" ] || exit 90' \
+    'exit 0' > "$fake_bin/starship"
   chmod +x \
     "$home_dir/.local/bin/uv" \
     "$home_dir/.local/bin/local-helper" \
     "$home_dir/.local/share/mise/shims/uv" \
-    "$fake_bin/mise"
+    "$fake_bin/mise" "$fake_bin/starship"
   : > "$home_dir/.oh-my-zsh/oh-my-zsh.sh"
   : > "$home_dir/.aliases"
   : > "$home_dir/.config/zsh/platform.zsh"
@@ -1421,6 +1463,8 @@ test_runtime_and_network_policy() {
 test_package_scope() {
   grep -qx 'code --classic' "$REPO_DIR/platforms/ubuntu/packages/base.snap" || fail "VS Code classic Snap"
   grep -qx 'ghostty' "$REPO_DIR/platforms/ubuntu/packages/base.apt" || fail "Ghostty base package"
+  grep -qx 'starship' "$REPO_DIR/platforms/ubuntu/packages/base.apt" || fail "Starship Ubuntu package"
+  grep -qx 'brew "starship"' "$REPO_DIR/platforms/macos/packages/Brewfile" || fail "Starship Homebrew package"
   if grep -Eq '^(iproute2|iputils-ping|dnsutils|netcat-openbsd|tcpdump|traceroute|mtr-tiny|whois|qemu-kvm|qemu-system-x86|libvirt)' \
     "$REPO_DIR/platforms/ubuntu/packages/base.apt"; then
     fail "optional packages leaked into Ubuntu base"
@@ -1435,6 +1479,25 @@ test_package_scope() {
   fi
   if grep -Eq 'macos|ubuntu|OSTYPE|Library/pnpm|fdfind|batcat' "$REPO_DIR/shared/modules/"*.sh "$REPO_DIR/shared/config/zsh/.zshrc"; then
     fail "hidden platform branch in shared behavior"
+  fi
+  # These patterns intentionally match literal prompt variables and command substitution.
+  # shellcheck disable=SC2016
+  grep -Fqx 'eval "$(starship init zsh)"' "$REPO_DIR/shared/config/zsh/.zshrc" ||
+    fail "Starship Zsh initialization"
+  grep -Fqx 'success_symbol = "[❯](mauve)"' \
+    "$REPO_DIR/shared/config/starship/starship.toml" || fail "Starship Pure preset character"
+  grep -Fqx 'palette = "catppuccin_latte"' \
+    "$REPO_DIR/shared/config/starship/starship.toml" || fail "Starship Catppuccin Latte palette"
+  grep -Fqx 'mauve = "#8839ef"' \
+    "$REPO_DIR/shared/config/starship/starship.toml" || fail "Starship Catppuccin Latte colors"
+  # shellcheck disable=SC2016
+  if grep -Eq '\$(aws|azure|gcloud|kubernetes|terraform)' \
+    "$REPO_DIR/shared/config/starship/starship.toml"; then
+    fail "cloud context leaked into the Starship Pure preset"
+  fi
+  if grep -Eq 'powerlevel10k\.git|ZSH_THEME="powerlevel10k|source .*\.p10k\.zsh' \
+    "$REPO_DIR/shared/modules/zsh.sh" "$REPO_DIR/shared/config/zsh/.zshrc"; then
+    fail "Powerlevel10k remains active"
   fi
   pass "base manifests and platform overlays own platform-specific behavior"
 }
@@ -1883,6 +1946,7 @@ test_guarded_function_restores_err_context
 test_selector_contract
 test_conflict_backup_and_idempotency
 test_private_file_preserved
+test_powerlevel10k_config_retirement_safety
 test_dry_run_has_no_side_effects
 test_bootstrap_dry_run
 test_bootstrap_branch_dry_run

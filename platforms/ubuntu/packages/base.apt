@@ -12,6 +12,7 @@ ripgrep
 fd-find
 bat
 eza
+starship
 tmux
 btop
 tree

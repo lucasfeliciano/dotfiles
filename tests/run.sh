@@ -1484,6 +1484,8 @@ test_package_scope() {
   # shellcheck disable=SC2016
   grep -Fqx 'eval "$(starship init zsh)"' "$REPO_DIR/shared/config/zsh/.zshrc" ||
     fail "Starship Zsh initialization"
+  grep -Fqx '  add-zle-hook-widget line-finish dotfiles_starship_transient_prompt' \
+    "$REPO_DIR/shared/config/zsh/.zshrc" || fail "Starship Zsh transient prompt"
   grep -Fqx 'success_symbol = "[❯](pink)"' \
     "$REPO_DIR/shared/config/starship/starship.toml" || fail "Starship Pure preset character"
   grep -Fqx 'palette = "catppuccin_latte"' \

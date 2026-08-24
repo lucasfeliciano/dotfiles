@@ -39,3 +39,21 @@ fi
 
 # Initialize the prompt last so earlier shell setup cannot override it.
 eval "$(starship init zsh)"
+
+# Collapse completed prompts to the character while keeping the active prompt full.
+if [[ -o interactive ]]; then
+  dotfiles_starship_transient_prompt() {
+    local prompt_status="${STARSHIP_CMD_STATUS:-0}"
+    local saved_prompt="$PROMPT"
+    local saved_rprompt="$RPROMPT"
+
+    PROMPT="$(starship module character --status="$prompt_status")"
+    RPROMPT=
+    zle reset-prompt
+    PROMPT="$saved_prompt"
+    RPROMPT="$saved_rprompt"
+  }
+
+  autoload -Uz add-zle-hook-widget
+  add-zle-hook-widget line-finish dotfiles_starship_transient_prompt
+fi

@@ -13,21 +13,28 @@ $line_break\
 $python\
 $character"""
 
+[username]
+style_user = "bold yellow"
+style_root = "bold red"
+
+[hostname]
+style = "bold green"
+
 [directory]
-style = "blue"
+style = "bold blue"
 
 [character]
-success_symbol = "[❯](mauve)"
+success_symbol = "[❯](pink)"
 error_symbol = "[❯](red)"
 vimcmd_symbol = "[❮](green)"
 
 [git_branch]
 format = "[$branch]($style)"
-style = "overlay1"
+style = "bold overlay1"
 
 [git_status]
-format = "[[(*$conflicted$untracked$modified$staged$renamed$deleted)](pink) ($ahead_behind$stashed)]($style)"
-style = "teal"
+format = "[[(*$conflicted$untracked$modified$staged$renamed$deleted)](bold pink) ($ahead_behind$stashed)]($style)"
+style = "bold teal"
 conflicted = "​"
 untracked = "​"
 modified = "​"
@@ -38,15 +45,15 @@ stashed = "≡"
 
 [git_state]
 format = '\([$state( $progress_current/$progress_total)]($style)\) '
-style = "overlay1"
+style = "bold overlay1"
 
 [cmd_duration]
 format = "[$duration]($style) "
-style = "yellow"
+style = "bold yellow"
 
 [python]
 format = "[$virtualenv]($style) "
-style = "overlay1"
+style = "bold overlay1"
 detect_extensions = []
 detect_files = []
 
